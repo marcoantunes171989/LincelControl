@@ -31,9 +31,9 @@ function extractFieldValues(sql: string): Record<string, string> {
 }
 
 describe('catálogo de módulos', () => {
-  it('possui exatamente 55 módulos', () => {
-    expect(MODULES_TOTAL).toBe(55)
-    expect(MODULES).toHaveLength(55)
+  it('possui exatamente 62 módulos', () => {
+    expect(MODULES_TOTAL).toBe(62)
+    expect(MODULES).toHaveLength(62)
   })
 
   it('não possui campos duplicados', () => {
@@ -50,16 +50,16 @@ describe('catálogo de módulos', () => {
 describe('generateUpdateSql', () => {
   it('gera "S" para módulo selecionado e "N" para módulo desmarcado', () => {
     const modules = buildModuleState(() => true)
-    modules.MOD_BLING = false
+    modules.MOD_ZOOMBOX = false
 
     const sql = generateUpdateSql({ store: BASE_STORE, license: BASE_LICENSE, modules, nfeExpertMode: 'nenhuma' })
     const values = extractFieldValues(sql)
 
     expect(values.MOD_MOVIMENTO).toBe('S')
-    expect(values.MOD_BLING).toBe('N')
+    expect(values.MOD_ZOOMBOX).toBe('N')
   })
 
-  it('inclui todos os 55 módulos no SET', () => {
+  it('inclui todos os 62 módulos no SET', () => {
     const modules = buildModuleState()
     const sql = generateUpdateSql({ store: BASE_STORE, license: BASE_LICENSE, modules, nfeExpertMode: 'nenhuma' })
     const values = extractFieldValues(sql)
@@ -69,7 +69,7 @@ describe('generateUpdateSql', () => {
     }
   })
 
-  it('modalidade Embedded gera Mod_Gestor_Doc_Fisc = S e MOD_NFE = N', () => {
+  it('modalidade Embedded gera mod_gestor_doc_fisc = S e MOD_NFE = N', () => {
     const modules = buildModuleState()
     const sql = generateUpdateSql({ store: BASE_STORE, license: BASE_LICENSE, modules, nfeExpertMode: 'embedded' })
     const values = extractFieldValues(sql)
@@ -78,7 +78,7 @@ describe('generateUpdateSql', () => {
     expect(values[NFE_EXPERT_PARTNER_FIELD]).toBe('N')
   })
 
-  it('modalidade Partner gera Mod_Gestor_Doc_Fisc = N e MOD_NFE = S', () => {
+  it('modalidade Partner gera mod_gestor_doc_fisc = N e MOD_NFE = S', () => {
     const modules = buildModuleState()
     const sql = generateUpdateSql({ store: BASE_STORE, license: BASE_LICENSE, modules, nfeExpertMode: 'partner' })
     const values = extractFieldValues(sql)

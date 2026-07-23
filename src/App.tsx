@@ -93,7 +93,7 @@ function App() {
   }, [moduleQuery, moduleCategory, moduleStatusFilter, modules])
 
   const integrationsActiveCount = useMemo(
-    () => countActiveByCategory(modules, nfeExpertMode, 'Integrações'),
+    () => countActiveByCategory(modules, nfeExpertMode, 'Integração'),
     [modules, nfeExpertMode],
   )
   const activeModuleLabels = useMemo(() => getActiveModuleLabels(modules, nfeExpertMode), [modules, nfeExpertMode])

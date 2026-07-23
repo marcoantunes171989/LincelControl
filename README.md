@@ -43,14 +43,14 @@ npm run build
 Toda alteração em qualquer campo — dados da loja, licença/PDVs, módulos ou modalidade NF-e Expert — recalcula o script `UPDATE TAB_LOJA` instantaneamente (`src/utils/sqlGenerator.ts`), sem necessidade de um botão "Gerar". O script é composto por:
 
 - Um cabeçalho comentado com o código e a descrição da loja (somente identificação, sem quebras de linha) e o CNPJ.
-- Um `SET` com os 55 campos de módulos (na ordem do catálogo) seguidos dos campos de licença, PDVs e CNPJ.
+- Um `SET` com os 62 campos de módulos/integrações (na ordem do catálogo) seguidos dos campos de licença, PDVs e CNPJ.
 - Uma cláusula `WHERE TAB_LOJA.COD_LOJA = <código>;`.
 
 O campo **Descrição** é usado somente no comentário do cabeçalho — nunca é incluído no `SET`.
 
 ## Regra de módulos S/N
 
-Os 55 módulos do catálogo (`src/data/modules.ts`) **sempre** aparecem no `SET`, nunca são omitidos:
+Os 62 módulos/integrações do catálogo (`src/data/modules.ts`, seções **Módulo** e **Integração**) **sempre** aparecem no `SET`, nunca são omitidos:
 
 - Módulo selecionado → `'S'`
 - Módulo desmarcado → `'N'`
@@ -59,9 +59,9 @@ Isso evita que um módulo antes habilitado permaneça ativo no banco por esqueci
 
 ## Regra de exclusividade NF-e Expert
 
-Os campos `Mod_Gestor_Doc_Fisc` (Embedded) e `MOD_NFE` (Partner) são mutuamente exclusivos e controlados por um seletor único ("Modalidade NF-e Expert"), nunca por checkboxes independentes:
+Os campos `mod_gestor_doc_fisc` (Embedded) e `MOD_NFE` (Partner) são mutuamente exclusivos e controlados por um seletor único ("Modalidade NF-e Expert"), nunca por checkboxes independentes:
 
-| Modalidade | Mod_Gestor_Doc_Fisc | MOD_NFE |
+| Modalidade | mod_gestor_doc_fisc | MOD_NFE |
 | ---------- | -------------------- | ------- |
 | Nenhuma    | `N`                   | `N`     |
 | Embedded   | `S`                   | `N`     |

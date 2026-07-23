@@ -15,16 +15,7 @@ export interface LicenseData {
 
 export type NfeExpertMode = 'nenhuma' | 'embedded' | 'partner'
 
-export type ModuleCategory =
-  | 'Base'
-  | 'Gestão'
-  | 'Fiscal'
-  | 'Integrações'
-  | 'Contábil'
-  | 'Segmentos'
-  | 'Financeiro'
-  | 'Administrativo'
-  | 'Compras'
+export type ModuleCategory = 'Módulo' | 'Integração'
 
 export const NFE_EXPERT_EXCLUSIVE_GROUP = 'nfe-expert' as const
 
