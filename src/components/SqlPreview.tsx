@@ -1,5 +1,6 @@
 import { AlertTriangle, CheckCircle2, FileCode2, Maximize2, Minimize2, X } from 'lucide-react'
 import { type ReactNode, useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { SqlToolbar } from './SqlToolbar'
 
 interface SqlPreviewProps {
@@ -167,30 +168,32 @@ export function SqlPreview({
         </div>
       </div>
 
-      {isFullscreen && (
-        <div className="fixed inset-0 z-50 flex flex-col bg-slate-950/95 p-3 sm:p-6">
-          <div className="flex items-center justify-between gap-2 pb-3">
-            <div className="flex items-center gap-2 text-sm font-medium text-slate-200">
-              <FileCode2 size={18} aria-hidden="true" />
-              Pré-visualização do script — tela cheia
+      {isFullscreen &&
+        createPortal(
+          <div className="fixed inset-0 z-[100] flex flex-col bg-slate-950 p-3 sm:p-6">
+            <div className="flex items-center justify-between gap-2 pb-3">
+              <div className="flex items-center gap-2 text-sm font-medium text-slate-200">
+                <FileCode2 size={18} aria-hidden="true" />
+                Pré-visualização do script — tela cheia
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsFullscreen(false)}
+                aria-label="Fechar tela cheia"
+                className="inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-slate-700 px-3 text-sm font-medium text-slate-200 transition hover:bg-slate-800"
+              >
+                <Minimize2 size={14} aria-hidden="true" />
+                <span className="hidden sm:inline">Sair da tela cheia</span>
+                <X size={14} className="sm:hidden" aria-hidden="true" />
+              </button>
             </div>
-            <button
-              type="button"
-              onClick={() => setIsFullscreen(false)}
-              aria-label="Fechar tela cheia"
-              className="inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-slate-700 px-3 text-sm font-medium text-slate-200 transition hover:bg-slate-800"
-            >
-              <Minimize2 size={14} aria-hidden="true" />
-              <span className="hidden sm:inline">Sair da tela cheia</span>
-              <X size={14} className="sm:hidden" aria-hidden="true" />
-            </button>
-          </div>
-          <div className="min-h-0 flex-1 overflow-hidden rounded-xl border border-slate-800 bg-[#0d1117] shadow-inner">
-            <SqlToolbar fileName={fileName} onCopy={onCopy} copyDisabled={!isValid} />
-            <CodeBlock lines={lines} maxHeightClassName="max-h-[calc(100vh-9rem)]" />
-          </div>
-        </div>
-      )}
+            <div className="min-h-0 flex-1 overflow-hidden rounded-xl border border-slate-800 bg-[#0d1117] shadow-inner">
+              <SqlToolbar fileName={fileName} onCopy={onCopy} copyDisabled={!isValid} />
+              <CodeBlock lines={lines} maxHeightClassName="max-h-[calc(100vh-9rem)]" />
+            </div>
+          </div>,
+          document.body,
+        )}
     </section>
   )
 }
