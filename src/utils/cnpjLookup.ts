@@ -8,7 +8,9 @@ interface CnpjWsInscricaoEstadual {
 }
 
 interface CnpjWsResponse {
+  razao_social?: string
   estabelecimento?: {
+    nome_fantasia?: string
     inscricoes_estaduais?: CnpjWsInscricaoEstadual[]
   }
   inscricoes_estaduais?: CnpjWsInscricaoEstadual[]
@@ -19,6 +21,8 @@ export interface CnpjLookupResult {
   cnpjFound: boolean
   /** Inscrições estaduais formatadas ("UF: número | UF: número"), ou string vazia se não houver nenhuma. */
   inscricaoEstadual: string
+  /** Razão social (ou nome fantasia, se a razão social não vier preenchida) — string vazia se não encontrada. */
+  razaoSocial: string
 }
 
 function formatInscricoesEstaduais(items: CnpjWsInscricaoEstadual[] | undefined): string {
@@ -38,19 +42,21 @@ function formatInscricoesEstaduais(items: CnpjWsInscricaoEstadual[] | undefined)
     .join(' | ')
 }
 
-/** Consulta a API pública CNPJ.ws para localizar as inscrições estaduais de um CNPJ (somente dígitos). */
-export async function lookupInscricaoEstadual(cnpjDigits: string, signal: AbortSignal): Promise<CnpjLookupResult> {
+/** Consulta a API pública CNPJ.ws para localizar a razão social e as inscrições estaduais de um CNPJ (somente dígitos). */
+export async function lookupCnpj(cnpjDigits: string, signal: AbortSignal): Promise<CnpjLookupResult> {
   const response = await fetch(`${CNPJ_WS_BASE_URL}/${cnpjDigits}`, { signal })
 
   if (!response.ok) {
-    return { cnpjFound: false, inscricaoEstadual: '' }
+    return { cnpjFound: false, inscricaoEstadual: '', razaoSocial: '' }
   }
 
   const json = (await response.json().catch(() => null)) as CnpjWsResponse | null
   if (!json || typeof json !== 'object') {
-    return { cnpjFound: false, inscricaoEstadual: '' }
+    return { cnpjFound: false, inscricaoEstadual: '', razaoSocial: '' }
   }
 
   const items = json.estabelecimento?.inscricoes_estaduais ?? json.inscricoes_estaduais
-  return { cnpjFound: true, inscricaoEstadual: formatInscricoesEstaduais(items) }
+  const razaoSocial = json.razao_social || json.estabelecimento?.nome_fantasia || ''
+
+  return { cnpjFound: true, inscricaoEstadual: formatInscricoesEstaduais(items), razaoSocial }
 }

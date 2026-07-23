@@ -8,7 +8,7 @@ interface StoreInformationCardProps {
   errors: Pick<ValidationErrors, 'codLoja' | 'numCgc'>
   onChange: <K extends keyof StoreData>(field: K, value: StoreData[K]) => void
   inscricaoEstadual: string
-  isLoadingInscricaoEstadual: boolean
+  isLoadingCnpjInfo: boolean
 }
 
 export function StoreInformationCard({
@@ -16,7 +16,7 @@ export function StoreInformationCard({
   errors,
   onChange,
   inscricaoEstadual,
-  isLoadingInscricaoEstadual,
+  isLoadingCnpjInfo,
 }: StoreInformationCardProps) {
   return (
     <section
@@ -32,7 +32,7 @@ export function StoreInformationCard({
         <p className="mt-1 text-sm text-slate-500">Identificação da loja que receberá o UPDATE na TAB_LOJA.</p>
       </div>
 
-      <div className="mt-4 grid grid-cols-1 items-start gap-4 sm:grid-cols-[1fr_2fr_2fr]">
+      <div className="mt-4 grid grid-cols-1 items-start gap-4 sm:grid-cols-2 xl:grid-cols-[minmax(11rem,1fr)_2fr_2fr]">
         <FormField
           id="cod-loja"
           label="Código da loja"
@@ -55,25 +55,28 @@ export function StoreInformationCard({
           placeholder="00.000.000/0000-00"
           required
         />
-        <FormField
-          id="inscricao-estadual"
-          label="Inscrição Estadual"
-          dbField="somente comentário"
-          value={inscricaoEstadual}
-          readOnly
-          loading={isLoadingInscricaoEstadual}
-          placeholder="Preencha o CNPJ"
-          hint="Consultada automaticamente ao completar o CNPJ (API pública CNPJ.ws). Sem registro encontrado → ISENTO. Aparece apenas no comentário do script."
-        />
-        <div className="sm:col-span-3">
+        <div className="sm:col-span-2 xl:col-span-1">
+          <FormField
+            id="inscricao-estadual"
+            label="Insc. Estadual"
+            dbField="COMENTÁRIO"
+            value={inscricaoEstadual}
+            readOnly
+            loading={isLoadingCnpjInfo}
+            placeholder="Preencha o CNPJ"
+            hint="Consultada automaticamente ao completar o CNPJ (API pública CNPJ.ws). Sem registro encontrado → ISENTO. Aparece apenas no comentário do script."
+          />
+        </div>
+        <div className="sm:col-span-2 xl:col-span-3">
           <FormField
             id="descricao"
             label="Descrição"
-            dbField="somente comentário"
+            dbField="COMENTÁRIO"
             value={store.descricao}
-            onChange={(value) => onChange('descricao', value)}
-            clearable
-            hint="Usada apenas para identificação e no comentário do cabeçalho do script — não entra no SET do UPDATE."
+            readOnly
+            loading={isLoadingCnpjInfo}
+            placeholder="Preencha o CNPJ"
+            hint="Preenchida automaticamente com a razão social do CNPJ (API pública CNPJ.ws). Usada apenas para identificação e no comentário do script — não entra no SET do UPDATE."
           />
         </div>
       </div>

@@ -47,7 +47,7 @@ function App() {
     totalModulesCount,
     fileName,
     inscricaoEstadual,
-    isLoadingInscricaoEstadual,
+    isLoadingCnpjInfo,
   } = useSqlGenerator()
 
   const [activeModal, setActiveModal] = useState<ModalKind>(null)
@@ -163,7 +163,7 @@ function App() {
               errors={errors}
               onChange={updateStoreField}
               inscricaoEstadual={inscricaoEstadual}
-              isLoadingInscricaoEstadual={isLoadingInscricaoEstadual}
+              isLoadingCnpjInfo={isLoadingCnpjInfo}
             />
             <LicensePdvCard license={license} errors={errors} onChange={updateLicenseField} />
 

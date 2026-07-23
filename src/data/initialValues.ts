@@ -4,7 +4,8 @@ import type { AppFormState, ModuleState, NfeExpertMode, StoreData, LicenseData }
 export const EXAMPLE_STORE: StoreData = {
   codLoja: '1',
   numCgc: '02274225000161',
-  descricao: 'JACI SUPERMERCADOS LTDA',
+  // Preenchida automaticamente pela consulta de CNPJ assim que os 14 dígitos forem detectados.
+  descricao: '',
 }
 
 export const EXAMPLE_LICENSE: LicenseData = {

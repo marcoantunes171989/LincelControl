@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { lookupInscricaoEstadual } from '../utils/cnpjLookup'
+import { lookupCnpj } from '../utils/cnpjLookup'
 
 function mockFetchOnce(response: Partial<Response> & { jsonBody?: unknown }) {
   const { jsonBody, ...rest } = response
@@ -13,7 +13,7 @@ function mockFetchOnce(response: Partial<Response> & { jsonBody?: unknown }) {
   )
 }
 
-describe('lookupInscricaoEstadual', () => {
+describe('lookupCnpj', () => {
   afterEach(() => {
     vi.unstubAllGlobals()
   })
@@ -28,7 +28,7 @@ describe('lookupInscricaoEstadual', () => {
       },
     })
 
-    const result = await lookupInscricaoEstadual('02274225000161', new AbortController().signal)
+    const result = await lookupCnpj('02274225000161', new AbortController().signal)
     expect(result.cnpjFound).toBe(true)
     expect(result.inscricaoEstadual).toBe('SP: 123.456.789.114')
   })
@@ -46,7 +46,7 @@ describe('lookupInscricaoEstadual', () => {
       },
     })
 
-    const result = await lookupInscricaoEstadual('02274225000161', new AbortController().signal)
+    const result = await lookupCnpj('02274225000161', new AbortController().signal)
     expect(result.inscricaoEstadual).toBe('SP: 111 | RJ: 222')
   })
 
@@ -56,7 +56,7 @@ describe('lookupInscricaoEstadual', () => {
       jsonBody: { estabelecimento: { inscricoes_estaduais: [] } },
     })
 
-    const result = await lookupInscricaoEstadual('02274225000161', new AbortController().signal)
+    const result = await lookupCnpj('02274225000161', new AbortController().signal)
     expect(result.cnpjFound).toBe(true)
     expect(result.inscricaoEstadual).toBe('')
   })
@@ -64,9 +64,10 @@ describe('lookupInscricaoEstadual', () => {
   it('retorna cnpjFound false quando a API responde com erro', async () => {
     mockFetchOnce({ ok: false, jsonBody: null })
 
-    const result = await lookupInscricaoEstadual('00000000000000', new AbortController().signal)
+    const result = await lookupCnpj('00000000000000', new AbortController().signal)
     expect(result.cnpjFound).toBe(false)
     expect(result.inscricaoEstadual).toBe('')
+    expect(result.razaoSocial).toBe('')
   })
 
   it('ignora inscrições inativas quando existe ao menos uma ativa', async () => {
@@ -82,7 +83,37 @@ describe('lookupInscricaoEstadual', () => {
       },
     })
 
-    const result = await lookupInscricaoEstadual('02274225000161', new AbortController().signal)
+    const result = await lookupCnpj('02274225000161', new AbortController().signal)
     expect(result.inscricaoEstadual).toBe('SP: 111')
+  })
+
+  it('retorna a razão social encontrada', async () => {
+    mockFetchOnce({
+      ok: true,
+      jsonBody: { razao_social: 'JACI SUPERMERCADOS LTDA', estabelecimento: { inscricoes_estaduais: [] } },
+    })
+
+    const result = await lookupCnpj('02274225000161', new AbortController().signal)
+    expect(result.razaoSocial).toBe('JACI SUPERMERCADOS LTDA')
+  })
+
+  it('usa o nome fantasia quando a razão social não vem preenchida', async () => {
+    mockFetchOnce({
+      ok: true,
+      jsonBody: { estabelecimento: { nome_fantasia: 'JACI MERCADO', inscricoes_estaduais: [] } },
+    })
+
+    const result = await lookupCnpj('02274225000161', new AbortController().signal)
+    expect(result.razaoSocial).toBe('JACI MERCADO')
+  })
+
+  it('retorna razão social vazia quando não encontrada', async () => {
+    mockFetchOnce({
+      ok: true,
+      jsonBody: { estabelecimento: { inscricoes_estaduais: [] } },
+    })
+
+    const result = await lookupCnpj('02274225000161', new AbortController().signal)
+    expect(result.razaoSocial).toBe('')
   })
 })

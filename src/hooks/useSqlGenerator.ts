@@ -12,7 +12,7 @@ import {
   buildModuleState,
 } from '../data/initialValues'
 import type { LicenseData, ModuleState, NfeExpertMode, StoreData } from '../types'
-import { lookupInscricaoEstadual } from '../utils/cnpjLookup'
+import { lookupCnpj } from '../utils/cnpjLookup'
 import { buildSqlFileName } from '../utils/downloadSql'
 import { normalizeCnpj } from '../utils/formatters'
 import { countActiveModules, countInactiveModules, generateUpdateSql } from '../utils/sqlGenerator'
@@ -27,7 +27,7 @@ export function useSqlGenerator() {
   const [nfeExpertMode, setNfeExpertMode] = useState<NfeExpertMode>(EMPTY_NFE_EXPERT_MODE)
 
   const [inscricaoEstadual, setInscricaoEstadual] = useState('')
-  const [isLoadingInscricaoEstadual, setIsLoadingInscricaoEstadual] = useState(false)
+  const [isLoadingCnpjInfo, setIsLoadingCnpjInfo] = useState(false)
   const lastCheckedCnpjRef = useRef('')
 
   useEffect(() => {
@@ -35,8 +35,9 @@ export function useSqlGenerator() {
 
     if (digits.length !== 14) {
       lastCheckedCnpjRef.current = ''
-      setIsLoadingInscricaoEstadual(false)
+      setIsLoadingCnpjInfo(false)
       setInscricaoEstadual('')
+      setStore((prev) => (prev.descricao === '' ? prev : { ...prev, descricao: '' }))
       return
     }
 
@@ -44,12 +45,14 @@ export function useSqlGenerator() {
     lastCheckedCnpjRef.current = digits
 
     const controller = new AbortController()
-    setIsLoadingInscricaoEstadual(true)
+    setIsLoadingCnpjInfo(true)
     setInscricaoEstadual('')
+    setStore((prev) => ({ ...prev, descricao: '' }))
 
-    lookupInscricaoEstadual(digits, controller.signal)
+    lookupCnpj(digits, controller.signal)
       .then((result) => {
         setInscricaoEstadual(result.inscricaoEstadual || INSCRICAO_ESTADUAL_NOT_FOUND)
+        setStore((prev) => ({ ...prev, descricao: result.razaoSocial }))
       })
       .catch(() => {
         if (controller.signal.aborted) return
@@ -57,7 +60,7 @@ export function useSqlGenerator() {
       })
       .finally(() => {
         if (controller.signal.aborted) return
-        setIsLoadingInscricaoEstadual(false)
+        setIsLoadingCnpjInfo(false)
       })
 
     return () => controller.abort()
@@ -136,6 +139,6 @@ export function useSqlGenerator() {
     totalModulesCount: MODULES_TOTAL,
     fileName,
     inscricaoEstadual,
-    isLoadingInscricaoEstadual,
+    isLoadingCnpjInfo,
   }
 }
