@@ -67,6 +67,8 @@ Os campos `mod_gestor_doc_fisc` (Embedded) e `MOD_NFE` (Partner) são mutuamente
 | Embedded   | `S`                   | `N`     |
 | Partner    | `N`                   | `S`     |
 
+> O nome físico da coluna no banco é `mod_gestor_doc_fisc` (minúsculo), mas o script SQL gerado sempre exibe os nomes de campo em maiúsculas — SQL é case-insensitive para identificadores, então o `UPDATE` continua correto.
+
 ## Nenhuma informação é salva
 
 A aplicação não utiliza `localStorage`, `sessionStorage`, `IndexedDB`, cookies, banco de dados ou qualquer chamada de rede para persistir dados. Todo o estado vive apenas na memória do React — ao atualizar a página, os valores retornam ao estado inicial de exemplo.

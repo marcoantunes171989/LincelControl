@@ -79,7 +79,7 @@ export function generateUpdateSql(input: SqlGenerationInput): string {
   const { store, license, modules, nfeExpertMode } = input
 
   const moduleLines: SqlFieldLine[] = MODULES.map((module) => ({
-    field: module.field,
+    field: module.field.toUpperCase(),
     value: resolveModuleValue(module, modules, nfeExpertMode),
     comment: module.comment,
   }))
@@ -97,7 +97,7 @@ export function generateUpdateSql(input: SqlGenerationInput): string {
   })
 
   const codLojaForWhere = toSafeInteger(store.codLoja)
-  const descricao = sanitizeSingleLine(store.descricao)
+  const descricao = sanitizeSingleLine(store.descricao).toUpperCase()
   const codLojaLabel = store.codLoja.trim() !== '' ? store.codLoja.trim() : codLojaForWhere
 
   const header = [

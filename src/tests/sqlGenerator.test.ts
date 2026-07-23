@@ -65,26 +65,26 @@ describe('generateUpdateSql', () => {
     const values = extractFieldValues(sql)
 
     for (const module of MODULES) {
-      expect(values[module.field]).toBeDefined()
+      expect(values[module.field.toUpperCase()]).toBeDefined()
     }
   })
 
-  it('modalidade Embedded gera mod_gestor_doc_fisc = S e MOD_NFE = N', () => {
+  it('modalidade Embedded gera MOD_GESTOR_DOC_FISC = S e MOD_NFE = N', () => {
     const modules = buildModuleState()
     const sql = generateUpdateSql({ store: BASE_STORE, license: BASE_LICENSE, modules, nfeExpertMode: 'embedded' })
     const values = extractFieldValues(sql)
 
-    expect(values[NFE_EXPERT_EMBEDDED_FIELD]).toBe('S')
-    expect(values[NFE_EXPERT_PARTNER_FIELD]).toBe('N')
+    expect(values[NFE_EXPERT_EMBEDDED_FIELD.toUpperCase()]).toBe('S')
+    expect(values[NFE_EXPERT_PARTNER_FIELD.toUpperCase()]).toBe('N')
   })
 
-  it('modalidade Partner gera mod_gestor_doc_fisc = N e MOD_NFE = S', () => {
+  it('modalidade Partner gera MOD_GESTOR_DOC_FISC = N e MOD_NFE = S', () => {
     const modules = buildModuleState()
     const sql = generateUpdateSql({ store: BASE_STORE, license: BASE_LICENSE, modules, nfeExpertMode: 'partner' })
     const values = extractFieldValues(sql)
 
-    expect(values[NFE_EXPERT_EMBEDDED_FIELD]).toBe('N')
-    expect(values[NFE_EXPERT_PARTNER_FIELD]).toBe('S')
+    expect(values[NFE_EXPERT_EMBEDDED_FIELD.toUpperCase()]).toBe('N')
+    expect(values[NFE_EXPERT_PARTNER_FIELD.toUpperCase()]).toBe('S')
   })
 
   it('modalidade Nenhuma gera os dois campos como N', () => {
@@ -92,8 +92,8 @@ describe('generateUpdateSql', () => {
     const sql = generateUpdateSql({ store: BASE_STORE, license: BASE_LICENSE, modules, nfeExpertMode: 'nenhuma' })
     const values = extractFieldValues(sql)
 
-    expect(values[NFE_EXPERT_EMBEDDED_FIELD]).toBe('N')
-    expect(values[NFE_EXPERT_PARTNER_FIELD]).toBe('N')
+    expect(values[NFE_EXPERT_EMBEDDED_FIELD.toUpperCase()]).toBe('N')
+    expect(values[NFE_EXPERT_PARTNER_FIELD.toUpperCase()]).toBe('N')
   })
 
   it('nunca gera os dois campos NF-e Expert como S simultaneamente', () => {
@@ -101,7 +101,8 @@ describe('generateUpdateSql', () => {
     for (const mode of ['nenhuma', 'embedded', 'partner'] as const) {
       const sql = generateUpdateSql({ store: BASE_STORE, license: BASE_LICENSE, modules, nfeExpertMode: mode })
       const values = extractFieldValues(sql)
-      const bothActive = values[NFE_EXPERT_EMBEDDED_FIELD] === 'S' && values[NFE_EXPERT_PARTNER_FIELD] === 'S'
+      const bothActive =
+        values[NFE_EXPERT_EMBEDDED_FIELD.toUpperCase()] === 'S' && values[NFE_EXPERT_PARTNER_FIELD.toUpperCase()] === 'S'
       expect(bothActive).toBe(false)
     }
   })
@@ -175,6 +176,30 @@ describe('generateUpdateSql', () => {
     expect(setBlock.includes('DESCRICAO_UNICA_TESTE')).toBe(false)
   })
 
+  it('converte para maiúsculas os nomes de campo com casing minúsculo/misto no catálogo', () => {
+    const modules = buildModuleState()
+    const sql = generateUpdateSql({ store: BASE_STORE, license: BASE_LICENSE, modules, nfeExpertMode: 'nenhuma' })
+
+    expect(sql).toContain('TAB_LOJA.MOD_GESTOR_DOC_FISC')
+    expect(sql).toContain('TAB_LOJA.MOD_NEXXERA')
+    expect(sql).toContain('TAB_LOJA.MOD_APP_INTERSOLID_ONE')
+    expect(sql).not.toContain('mod_gestor_doc_fisc')
+    expect(sql).not.toContain('mod_nexxera')
+    expect(sql).not.toContain('Mod_App_Intersolid_One')
+  })
+
+  it('converte a descrição da loja para maiúsculas no comentário do cabeçalho', () => {
+    const store: StoreData = { ...BASE_STORE, descricao: 'Supermercado Teste 123' }
+    const sql = generateUpdateSql({
+      store,
+      license: BASE_LICENSE,
+      modules: buildModuleState(),
+      nfeExpertMode: 'nenhuma',
+    })
+    const headerLine = sql.split('\n').find((line) => line.startsWith('-- Loja:'))
+    expect(headerLine).toContain('SUPERMERCADO TESTE 123')
+  })
+
   it('remove quebras de linha da descrição no comentário do cabeçalho', () => {
     const store: StoreData = { ...BASE_STORE, descricao: 'Linha 1\nLinha 2\r\nLinha 3' }
     const sql = generateUpdateSql({
@@ -184,7 +209,7 @@ describe('generateUpdateSql', () => {
       nfeExpertMode: 'nenhuma',
     })
     const headerLine = sql.split('\n').find((line) => line.startsWith('-- Loja:'))
-    expect(headerLine).toContain('Linha 1 Linha 2 Linha 3')
+    expect(headerLine).toContain('LINHA 1 LINHA 2 LINHA 3')
   })
 })
 
