@@ -46,6 +46,8 @@ function App() {
     inactiveModulesCount,
     totalModulesCount,
     fileName,
+    inscricaoEstadual,
+    isLoadingInscricaoEstadual,
   } = useSqlGenerator()
 
   const [activeModal, setActiveModal] = useState<ModalKind>(null)
@@ -156,7 +158,13 @@ function App() {
 
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,58fr)_minmax(0,42fr)] lg:items-start">
           <div className="flex flex-col gap-6">
-            <StoreInformationCard store={store} errors={errors} onChange={updateStoreField} />
+            <StoreInformationCard
+              store={store}
+              errors={errors}
+              onChange={updateStoreField}
+              inscricaoEstadual={inscricaoEstadual}
+              isLoadingInscricaoEstadual={isLoadingInscricaoEstadual}
+            />
             <LicensePdvCard license={license} errors={errors} onChange={updateLicenseField} />
 
             <section

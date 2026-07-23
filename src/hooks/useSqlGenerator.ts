@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { MODULES_TOTAL } from '../data/modules'
 import {
   EMPTY_LICENSE,
@@ -12,15 +12,56 @@ import {
   buildModuleState,
 } from '../data/initialValues'
 import type { LicenseData, ModuleState, NfeExpertMode, StoreData } from '../types'
+import { lookupInscricaoEstadual } from '../utils/cnpjLookup'
 import { buildSqlFileName } from '../utils/downloadSql'
+import { normalizeCnpj } from '../utils/formatters'
 import { countActiveModules, countInactiveModules, generateUpdateSql } from '../utils/sqlGenerator'
 import { hasValidationErrors, validateAll } from '../utils/validators'
+
+const INSCRICAO_ESTADUAL_NOT_FOUND = 'ISENTO'
 
 export function useSqlGenerator() {
   const [store, setStore] = useState<StoreData>(EMPTY_STORE)
   const [license, setLicense] = useState<LicenseData>(EMPTY_LICENSE)
   const [modules, setModules] = useState<ModuleState>(EMPTY_MODULE_STATE)
   const [nfeExpertMode, setNfeExpertMode] = useState<NfeExpertMode>(EMPTY_NFE_EXPERT_MODE)
+
+  const [inscricaoEstadual, setInscricaoEstadual] = useState('')
+  const [isLoadingInscricaoEstadual, setIsLoadingInscricaoEstadual] = useState(false)
+  const lastCheckedCnpjRef = useRef('')
+
+  useEffect(() => {
+    const digits = normalizeCnpj(store.numCgc)
+
+    if (digits.length !== 14) {
+      lastCheckedCnpjRef.current = ''
+      setIsLoadingInscricaoEstadual(false)
+      setInscricaoEstadual('')
+      return
+    }
+
+    if (digits === lastCheckedCnpjRef.current) return
+    lastCheckedCnpjRef.current = digits
+
+    const controller = new AbortController()
+    setIsLoadingInscricaoEstadual(true)
+    setInscricaoEstadual('')
+
+    lookupInscricaoEstadual(digits, controller.signal)
+      .then((result) => {
+        setInscricaoEstadual(result.inscricaoEstadual || INSCRICAO_ESTADUAL_NOT_FOUND)
+      })
+      .catch(() => {
+        if (controller.signal.aborted) return
+        setInscricaoEstadual(INSCRICAO_ESTADUAL_NOT_FOUND)
+      })
+      .finally(() => {
+        if (controller.signal.aborted) return
+        setIsLoadingInscricaoEstadual(false)
+      })
+
+    return () => controller.abort()
+  }, [store.numCgc])
 
   const updateStoreField = useCallback(<K extends keyof StoreData>(field: K, value: StoreData[K]) => {
     setStore((prev) => ({ ...prev, [field]: value }))
@@ -62,8 +103,8 @@ export function useSqlGenerator() {
   const isValid = useMemo(() => !hasValidationErrors(errors), [errors])
 
   const sql = useMemo(
-    () => generateUpdateSql({ store, license, modules, nfeExpertMode }),
-    [store, license, modules, nfeExpertMode],
+    () => generateUpdateSql({ store, license, modules, nfeExpertMode, inscricaoEstadual }),
+    [store, license, modules, nfeExpertMode, inscricaoEstadual],
   )
 
   const activeModulesCount = useMemo(() => countActiveModules(modules, nfeExpertMode), [modules, nfeExpertMode])
@@ -94,5 +135,7 @@ export function useSqlGenerator() {
     inactiveModulesCount,
     totalModulesCount: MODULES_TOTAL,
     fileName,
+    inscricaoEstadual,
+    isLoadingInscricaoEstadual,
   }
 }

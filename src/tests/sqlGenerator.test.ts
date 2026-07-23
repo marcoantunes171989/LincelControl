@@ -176,6 +176,50 @@ describe('generateUpdateSql', () => {
     expect(setBlock.includes('DESCRICAO_UNICA_TESTE')).toBe(false)
   })
 
+  it('inclui a Inscrição Estadual no comentário do cabeçalho quando informada', () => {
+    const sql = generateUpdateSql({
+      store: BASE_STORE,
+      license: BASE_LICENSE,
+      modules: buildModuleState(),
+      nfeExpertMode: 'nenhuma',
+      inscricaoEstadual: 'SP: 123.456.789.114',
+    })
+    expect(sql).toContain('-- Inscrição Estadual: SP: 123.456.789.114')
+  })
+
+  it('exibe ISENTO no comentário quando a Inscrição Estadual não foi encontrada', () => {
+    const sql = generateUpdateSql({
+      store: BASE_STORE,
+      license: BASE_LICENSE,
+      modules: buildModuleState(),
+      nfeExpertMode: 'nenhuma',
+      inscricaoEstadual: 'ISENTO',
+    })
+    expect(sql).toContain('-- Inscrição Estadual: ISENTO')
+  })
+
+  it('omite a linha de Inscrição Estadual quando ainda não consultada', () => {
+    const sql = generateUpdateSql({
+      store: BASE_STORE,
+      license: BASE_LICENSE,
+      modules: buildModuleState(),
+      nfeExpertMode: 'nenhuma',
+    })
+    expect(sql).not.toContain('Inscrição Estadual')
+  })
+
+  it('a Inscrição Estadual não aparece no SET, apenas no comentário', () => {
+    const sql = generateUpdateSql({
+      store: BASE_STORE,
+      license: BASE_LICENSE,
+      modules: buildModuleState(),
+      nfeExpertMode: 'nenhuma',
+      inscricaoEstadual: 'SP: 123.456.789.114',
+    })
+    const setBlock = sql.split('SET')[1]?.split('WHERE')[0] ?? ''
+    expect(setBlock.includes('123.456.789.114')).toBe(false)
+  })
+
   it('converte para maiúsculas os nomes de campo com casing minúsculo/misto no catálogo', () => {
     const modules = buildModuleState()
     const sql = generateUpdateSql({ store: BASE_STORE, license: BASE_LICENSE, modules, nfeExpertMode: 'nenhuma' })

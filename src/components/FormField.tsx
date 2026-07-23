@@ -1,4 +1,4 @@
-import { Minus, Plus, X } from 'lucide-react'
+import { Loader2, Minus, Plus, X } from 'lucide-react'
 import { DatabaseFieldBadge } from './DatabaseFieldBadge'
 
 interface FormFieldProps {
@@ -6,7 +6,7 @@ interface FormFieldProps {
   label: string
   dbField: string
   value: string
-  onChange: (value: string) => void
+  onChange?: (value: string) => void
   error?: string
   hint?: string
   inputMode?: 'numeric' | 'text'
@@ -17,6 +17,8 @@ interface FormFieldProps {
   stepper?: boolean
   min?: number
   max?: number
+  readOnly?: boolean
+  loading?: boolean
 }
 
 export function FormField({
@@ -35,6 +37,8 @@ export function FormField({
   stepper = false,
   min,
   max,
+  readOnly = false,
+  loading = false,
 }: FormFieldProps) {
   const errorId = `${id}-error`
   const hintId = `${id}-hint`
@@ -46,7 +50,7 @@ export function FormField({
     let next = base + delta
     if (min !== undefined) next = Math.max(min, next)
     if (max !== undefined) next = Math.min(max, next)
-    onChange(String(next))
+    onChange?.(String(next))
   }
 
   return (
@@ -67,21 +71,34 @@ export function FormField({
       <div className="relative flex items-stretch gap-1.5">
         <input
           id={id}
-          value={value}
-          onChange={(event) => onChange(event.target.value)}
+          value={loading ? 'Consultando...' : value}
+          onChange={(event) => onChange?.(event.target.value)}
           inputMode={inputMode}
           maxLength={maxLength}
           placeholder={placeholder}
+          readOnly={readOnly || loading}
           aria-invalid={Boolean(error)}
           aria-describedby={describedBy}
-          className={`min-h-11 w-full rounded-lg border px-3 py-2 text-sm text-slate-900 outline-none transition focus:ring-2 focus:ring-blue-200 ${
-            clearable && value ? 'pr-9' : ''
-          } ${error ? 'border-red-400 focus:border-red-500' : 'border-slate-300 focus:border-blue-500'}`}
+          aria-busy={loading}
+          className={`min-h-11 w-full rounded-lg border px-3 py-2 text-sm outline-none transition ${
+            readOnly
+              ? 'cursor-default border-slate-200 bg-slate-50 text-slate-600'
+              : 'text-slate-900 focus:ring-2 focus:ring-blue-200'
+          } ${loading ? 'italic text-slate-400' : ''} ${clearable && value ? 'pr-9' : ''} ${
+            error ? 'border-red-400 focus:border-red-500' : !readOnly ? 'border-slate-300 focus:border-blue-500' : ''
+          }`}
         />
-        {clearable && value && (
+        {loading && (
+          <Loader2
+            size={16}
+            className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 animate-spin text-slate-400"
+            aria-hidden="true"
+          />
+        )}
+        {clearable && value && !readOnly && (
           <button
             type="button"
-            onClick={() => onChange('')}
+            onClick={() => onChange?.('')}
             aria-label={`Limpar ${label}`}
             className="absolute right-2 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
           >

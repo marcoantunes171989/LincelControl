@@ -7,6 +7,8 @@ export interface SqlGenerationInput {
   license: LicenseData
   modules: ModuleState
   nfeExpertMode: NfeExpertMode
+  /** Inscrição Estadual consultada pelo CNPJ (somente comentário — não existe coluna correspondente na TAB_LOJA). */
+  inscricaoEstadual?: string
 }
 
 interface SqlFieldLine {
@@ -76,7 +78,7 @@ function buildLicenseLines(license: LicenseData, store: StoreData): SqlFieldLine
 
 /** Gera o script SQL completo de UPDATE da TAB_LOJA a partir do estado atual do formulário. */
 export function generateUpdateSql(input: SqlGenerationInput): string {
-  const { store, license, modules, nfeExpertMode } = input
+  const { store, license, modules, nfeExpertMode, inscricaoEstadual } = input
 
   const moduleLines: SqlFieldLine[] = MODULES.map((module) => ({
     field: module.field.toUpperCase(),
@@ -104,6 +106,7 @@ export function generateUpdateSql(input: SqlGenerationInput): string {
     '-- GERADOR DE UPDATE — TAB_LOJA',
     `-- Loja: ${codLojaLabel}${descricao ? ` - ${descricao}` : ''}`,
     `-- CNPJ: ${normalizeCnpj(store.numCgc)}`,
+    ...(inscricaoEstadual ? [`-- Inscrição Estadual: ${inscricaoEstadual}`] : []),
     '-- Revise as informações antes de executar no banco de dados.',
   ]
 

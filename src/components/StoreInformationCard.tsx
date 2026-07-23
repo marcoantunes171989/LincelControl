@@ -7,9 +7,17 @@ interface StoreInformationCardProps {
   store: StoreData
   errors: Pick<ValidationErrors, 'codLoja' | 'numCgc'>
   onChange: <K extends keyof StoreData>(field: K, value: StoreData[K]) => void
+  inscricaoEstadual: string
+  isLoadingInscricaoEstadual: boolean
 }
 
-export function StoreInformationCard({ store, errors, onChange }: StoreInformationCardProps) {
+export function StoreInformationCard({
+  store,
+  errors,
+  onChange,
+  inscricaoEstadual,
+  isLoadingInscricaoEstadual,
+}: StoreInformationCardProps) {
   return (
     <section
       id="loja"
@@ -24,7 +32,7 @@ export function StoreInformationCard({ store, errors, onChange }: StoreInformati
         <p className="mt-1 text-sm text-slate-500">Identificação da loja que receberá o UPDATE na TAB_LOJA.</p>
       </div>
 
-      <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+      <div className="mt-4 grid grid-cols-1 items-start gap-4 sm:grid-cols-[1fr_2fr_2fr]">
         <FormField
           id="cod-loja"
           label="Código da loja"
@@ -47,7 +55,17 @@ export function StoreInformationCard({ store, errors, onChange }: StoreInformati
           placeholder="00.000.000/0000-00"
           required
         />
-        <div className="sm:col-span-2">
+        <FormField
+          id="inscricao-estadual"
+          label="Inscrição Estadual"
+          dbField="somente comentário"
+          value={inscricaoEstadual}
+          readOnly
+          loading={isLoadingInscricaoEstadual}
+          placeholder="Preencha o CNPJ"
+          hint="Consultada automaticamente ao completar o CNPJ (API pública CNPJ.ws). Sem registro encontrado → ISENTO. Aparece apenas no comentário do script."
+        />
+        <div className="sm:col-span-3">
           <FormField
             id="descricao"
             label="Descrição"

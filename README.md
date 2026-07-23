@@ -2,7 +2,7 @@
 
 Aplicação **exclusivamente front-end** que gera, em tempo real, um script SQL de `UPDATE` para a tabela `TAB_LOJA`, a partir dos dados da loja, da licença/PDVs e dos módulos selecionados.
 
-Não existe back-end, API, banco de dados ou execução do SQL gerado. O script deve ser revisado e executado manualmente pela equipe responsável.
+Não existe back-end próprio, banco de dados ou execução do SQL gerado. A única chamada de rede é a consulta pública de Inscrição Estadual pelo CNPJ (veja [Consulta de Inscrição Estadual](#consulta-de-inscrição-estadual)). O script deve ser revisado e executado manualmente pela equipe responsável.
 
 ## Tecnologias utilizadas
 
@@ -42,11 +42,21 @@ npm run build
 
 Toda alteração em qualquer campo — dados da loja, licença/PDVs, módulos ou modalidade NF-e Expert — recalcula o script `UPDATE TAB_LOJA` instantaneamente (`src/utils/sqlGenerator.ts`), sem necessidade de um botão "Gerar". O script é composto por:
 
-- Um cabeçalho comentado com o código e a descrição da loja (somente identificação, sem quebras de linha) e o CNPJ.
+- Um cabeçalho comentado com o código e a descrição da loja (somente identificação, sem quebras de linha), o CNPJ e a Inscrição Estadual.
 - Um `SET` com os 62 campos de módulos/integrações (na ordem do catálogo) seguidos dos campos de licença, PDVs e CNPJ.
 - Uma cláusula `WHERE TAB_LOJA.COD_LOJA = <código>;`.
 
-O campo **Descrição** é usado somente no comentário do cabeçalho — nunca é incluído no `SET`.
+Os campos **Descrição** e **Inscrição Estadual** são usados somente no comentário do cabeçalho — nunca são incluídos no `SET` (não existe coluna correspondente na TAB_LOJA).
+
+## Consulta de Inscrição Estadual
+
+Ao completar os 14 dígitos do CNPJ, a aplicação consulta automaticamente a API pública [CNPJ.ws](https://publica.cnpj.ws/) (`GET https://publica.cnpj.ws/cnpj/<cnpj>`) para localizar a(s) Inscrição(ões) Estadual(is) da empresa (`src/utils/cnpjLookup.ts`). O campo na tela é somente leitura:
+
+- Enquanto consulta: exibe "Consultando...".
+- Encontrada: exibe `UF: número` (múltiplas inscrições são separadas por `|`).
+- Não encontrada ou falha na consulta: exibe **ISENTO**.
+
+Essa é a única chamada de rede da aplicação — envia apenas o CNPJ digitado (informação pública) para a API de consulta, sem enviar código da loja, licença ou o script gerado.
 
 ## Regra de módulos S/N
 
@@ -71,7 +81,7 @@ Os campos `mod_gestor_doc_fisc` (Embedded) e `MOD_NFE` (Partner) são mutuamente
 
 ## Nenhuma informação é salva
 
-A aplicação não utiliza `localStorage`, `sessionStorage`, `IndexedDB`, cookies, banco de dados ou qualquer chamada de rede para persistir dados. Todo o estado vive apenas na memória do React — ao atualizar a página, os valores retornam ao estado inicial de exemplo.
+A aplicação não utiliza `localStorage`, `sessionStorage`, `IndexedDB`, cookies ou banco de dados para persistir dados. Todo o estado vive apenas na memória do React — ao atualizar a página, os valores retornam ao estado inicial em branco. A única exceção é a consulta de Inscrição Estadual descrita acima, que envia o CNPJ para a API pública CNPJ.ws e não persiste nada além do resultado em memória.
 
 ## Aviso
 
