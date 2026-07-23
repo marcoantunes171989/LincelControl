@@ -17,10 +17,10 @@ import { countActiveModules, countInactiveModules, generateUpdateSql } from '../
 import { hasValidationErrors, validateAll } from '../utils/validators'
 
 export function useSqlGenerator() {
-  const [store, setStore] = useState<StoreData>(EXAMPLE_STORE)
-  const [license, setLicense] = useState<LicenseData>(EXAMPLE_LICENSE)
-  const [modules, setModules] = useState<ModuleState>(EXAMPLE_MODULE_STATE)
-  const [nfeExpertMode, setNfeExpertMode] = useState<NfeExpertMode>(EXAMPLE_NFE_EXPERT_MODE)
+  const [store, setStore] = useState<StoreData>(EMPTY_STORE)
+  const [license, setLicense] = useState<LicenseData>(EMPTY_LICENSE)
+  const [modules, setModules] = useState<ModuleState>(EMPTY_MODULE_STATE)
+  const [nfeExpertMode, setNfeExpertMode] = useState<NfeExpertMode>(EMPTY_NFE_EXPERT_MODE)
 
   const updateStoreField = useCallback(<K extends keyof StoreData>(field: K, value: StoreData[K]) => {
     setStore((prev) => ({ ...prev, [field]: value }))
