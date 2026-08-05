@@ -67,7 +67,7 @@ export function saveOracleSettings(input: OracleConfigurationInput): OracleConne
         ? (existing?.expectedPort ?? null)
         : input.expectedPort,
     expectedDatabase: (input.expectedDatabase ?? existing?.expectedDatabase ?? '').trim(),
-    username: input.username.trim(),
+    username: input.username.trim() || existing?.username || '',
     isEnabled: input.isEnabled === undefined ? Boolean(existing?.isEnabled) : Boolean(input.isEnabled),
     lastValidationStatus: existing?.lastValidationStatus ?? null,
     lastValidationMessage: existing?.lastValidationMessage ?? null,

@@ -88,6 +88,20 @@ export const oracleApi = {
       method: 'POST',
       body: JSON.stringify({ tnsAdminPath, tnsFileName, tnsAlias }),
     }),
+  importTns: (content: string, fileName = 'tnsnames.ora') =>
+    request<{
+      ok: boolean
+      message: string
+      aliases: TnsAliasInfo[]
+      aliasNames: string[]
+      tnsAdminPath: string
+      tnsFileName: string
+      filePath: string
+      status: OracleRuntimeStatus
+    }>('/api/oracle/tns-import', {
+      method: 'POST',
+      body: JSON.stringify({ content, fileName }),
+    }),
   validateClient: (oracleClientLibDir: string, tnsAdminPath?: string) =>
     request<{
       ok: boolean

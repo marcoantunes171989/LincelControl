@@ -5,19 +5,19 @@ import { passwordAttemptGuard, resetPasswordAttempts, validationRateLimit } from
 import { initializeOracleClient } from '../oracle/client.js'
 import { queryCatalog } from '../oracle/queryCatalog.js'
 import { oracleService } from '../oracle/service.js'
-import { findTnsAlias } from '../oracle/tnsParser.js'
+import { findTnsAlias, parseTnsNames } from '../oracle/tnsParser.js'
 import fs from 'node:fs/promises'
 import path from 'node:path'
 
 const configurationSchema = z.object({
   tnsAdminPath: z.string().optional().default(''),
   tnsFileName: z.string().min(1).optional().default('tnsnames.ora'),
-  tnsAlias: z.string().min(1),
+  tnsAlias: z.string().optional().default(''),
   oracleClientLibDir: z.string().optional().default(''),
   expectedHost: z.string().optional().default(''),
   expectedPort: z.coerce.number().int().min(1).max(65535).optional().nullable(),
   expectedDatabase: z.string().optional().default(''),
-  username: z.string().min(1),
+  username: z.string().optional().default(''),
   isEnabled: z.boolean().optional(),
 })
 
@@ -118,6 +118,46 @@ oracleRouter.post('/tns-parse', requirePermission('oracle.configure'), async (re
       return
     }
     res.json({ ok: true, alias })
+  } catch (error) {
+    next(error)
+  }
+})
+
+oracleRouter.post('/tns-import', requirePermission('oracle.configure'), validationRateLimit, async (req, res, next) => {
+  try {
+    const schema = z.object({
+      content: z.string().min(1),
+      fileName: z.string().min(1).optional().default('tnsnames.ora'),
+    })
+    const body = schema.parse(req.body)
+    const result = await oracleService.importTnsFile(body.content, body.fileName)
+    res.json({
+      ok: true,
+      message: `${result.aliasNames.length} alias(es) importado(s) do arquivo TNS.`,
+      ...result,
+      status: oracleService.getStatus(),
+    })
+  } catch (error) {
+    next(error)
+  }
+})
+
+oracleRouter.post('/tns-parse-content', requirePermission('oracle.configure'), (req, res, next) => {
+  try {
+    const schema = z.object({
+      content: z.string().min(1),
+      tnsAlias: z.string().min(1).optional(),
+    })
+    const body = schema.parse(req.body)
+    const aliases = parseTnsNames(body.content)
+    if (aliases.length === 0) {
+      res.status(400).json({ ok: false, message: 'Nenhum alias TNS encontrado no conteúdo.' })
+      return
+    }
+    const selected = body.tnsAlias
+      ? aliases.find((item) => item.alias.toUpperCase() === body.tnsAlias!.trim().toUpperCase()) || null
+      : aliases[0]
+    res.json({ ok: true, aliases, alias: selected })
   } catch (error) {
     next(error)
   }

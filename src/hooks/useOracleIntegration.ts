@@ -7,6 +7,7 @@ import {
   type StageResult,
   type TnsAliasInfo,
 } from '../types/oracle'
+import { parseTnsNames } from '../utils/tnsParser'
 
 export interface ClientValidationResult {
   ok: boolean
@@ -30,6 +31,9 @@ export function useOracleIntegration() {
   const [apiReachable, setApiReachable] = useState<boolean | null>(null)
   const [showAdvanced, setShowAdvanced] = useState(false)
   const [clientValidation, setClientValidation] = useState<ClientValidationResult | null>(null)
+  const [aliasDetails, setAliasDetails] = useState<TnsAliasInfo[]>([])
+  const [tnsImported, setTnsImported] = useState(false)
+  const [tnsFileLabel, setTnsFileLabel] = useState<string | null>(null)
 
   const refreshStatus = useCallback(async () => {
     try {
@@ -65,6 +69,28 @@ export function useOracleIntegration() {
           username: config.username || '',
           password: current.password,
         }))
+        if (config.tnsAdminPath) {
+          setTnsImported(true)
+          setTnsFileLabel(config.tnsFileName || 'tnsnames.ora')
+          try {
+            const listed = await oracleApi.listAliases(
+              config.tnsAdminPath,
+              config.tnsFileName || 'tnsnames.ora',
+            )
+            setAliases(listed.aliases)
+            if (config.tnsAlias) {
+              const parsed = await oracleApi.parseAlias(
+                config.tnsAdminPath,
+                config.tnsFileName || 'tnsnames.ora',
+                config.tnsAlias,
+              )
+              setSelectedAliasInfo(parsed.alias)
+              setAliasDetails([parsed.alias])
+            }
+          } catch {
+            /* TNS ainda não disponível no disco da API */
+          }
+        }
       }
     } catch {
       /* API offline */
@@ -158,10 +184,81 @@ export function useOracleIntegration() {
     }
   }, [form.oracleClientLibDir, form.tnsAdminPath, refreshStatus, toPayload])
 
+  const selectAlias = useCallback(
+    (aliasName: string, details?: TnsAliasInfo[]) => {
+      const source = details ?? aliasDetails
+      const info = source.find((item) => item.alias.toUpperCase() === aliasName.trim().toUpperCase()) || null
+      updateField('tnsAlias', info?.alias || aliasName.trim())
+      setSelectedAliasInfo(info)
+      if (info) {
+        updateField('expectedHost', info.hosts[0] || '')
+        updateField('expectedPort', info.ports[0] ? String(info.ports[0]) : '1521')
+        updateField('expectedDatabase', info.serviceName || info.sid || '')
+      }
+    },
+    [aliasDetails, updateField],
+  )
+
+  /** Importa tnsnames.ora pelo navegador, envia à API e lista os aliases Database. */
+  const importTnsFile = useCallback(
+    async (file: File): Promise<boolean> => {
+      setBusy(true)
+      setError(null)
+      setProgress('Importando arquivo TNS...')
+      try {
+        const content = await file.text()
+        const localAliases = parseTnsNames(content)
+        if (localAliases.length === 0) {
+          throw new Error('Nenhum alias TNS encontrado no arquivo. Verifique se é um tnsnames.ora válido.')
+        }
+
+        const result = await oracleApi.importTns(content, file.name || 'tnsnames.ora')
+        setAliasDetails(result.aliases)
+        setAliases(result.aliasNames)
+        setTnsImported(true)
+        setTnsFileLabel(file.name || 'tnsnames.ora')
+        updateField('tnsAdminPath', result.tnsAdminPath)
+        updateField('tnsFileName', result.tnsFileName)
+
+        const preferred =
+          result.aliases.find((item) => item.alias.toUpperCase() === form.tnsAlias.toUpperCase()) ||
+          result.aliases[0]
+        selectAlias(preferred.alias, result.aliases)
+        setProgress(null)
+        await refreshStatus()
+        return true
+      } catch (err) {
+        // Fallback: parse local se API falhar — ainda assim exige API para conectar
+        try {
+          const content = await file.text()
+          const localAliases = parseTnsNames(content)
+          if (localAliases.length > 0 && err instanceof Error && /API/i.test(err.message)) {
+            setAliasDetails(localAliases)
+            setAliases(localAliases.map((item) => item.alias))
+            setTnsImported(false)
+            setTnsFileLabel(`${file.name} (somente local — envie à API para conectar)`)
+            selectAlias(localAliases[0].alias, localAliases)
+          }
+        } catch {
+          /* ignore secondary parse */
+        }
+        setError(err instanceof Error ? err.message : 'Falha ao importar TNS')
+        setProgress(null)
+        return false
+      } finally {
+        setBusy(false)
+      }
+    },
+    [form.tnsAlias, refreshStatus, selectAlias, updateField],
+  )
+
   const loadAliases = useCallback(async () => {
+    if (aliasDetails.length > 0) {
+      setAliases(aliasDetails.map((item) => item.alias))
+      return aliasDetails.map((item) => item.alias)
+    }
     if (!form.tnsAdminPath.trim()) {
-      setError('Informe o TNS_ADMIN para listar os aliases do tnsnames.ora.')
-      setShowAdvanced(true)
+      setError('Importe o arquivo tnsnames.ora ou informe o TNS_ADMIN.')
       return []
     }
     setBusy(true)
@@ -176,12 +273,16 @@ export function useOracleIntegration() {
     } finally {
       setBusy(false)
     }
-  }, [form.tnsAdminPath, form.tnsFileName])
+  }, [aliasDetails, form.tnsAdminPath, form.tnsFileName])
 
-  /** Logon: valida Client no caminho informado → conecta com TNS + usuário/senha. */
+  /** Logon: Client → TNS importado → Username/Password. */
   const logon = useCallback(async (): Promise<boolean> => {
     if (!form.oracleClientLibDir.trim()) {
       setError('Informe o caminho do Oracle Client para validar a OCI.DLL.')
+      return false
+    }
+    if (!tnsImported && !form.tnsAdminPath.trim()) {
+      setError('Importe o arquivo tnsnames.ora antes de conectar.')
       return false
     }
     if (!form.username.trim() || !form.tnsAlias.trim()) {
@@ -239,6 +340,7 @@ export function useOracleIntegration() {
     identityPayload,
     refreshStatus,
     status?.passwordAvailableInMemory,
+    tnsImported,
     toPayload,
   ])
 
@@ -281,6 +383,7 @@ export function useOracleIntegration() {
     form,
     status,
     aliases,
+    aliasDetails,
     selectedAliasInfo,
     stages,
     progress,
@@ -290,12 +393,16 @@ export function useOracleIntegration() {
     showAdvanced,
     apiReachable,
     clientValidation,
+    tnsImported,
+    tnsFileLabel,
     setShowPassword,
     setShowAdvanced,
     setError,
     updateField,
+    selectAlias,
     refreshStatus,
     loadAliases,
+    importTnsFile,
     validateClientPath,
     logon,
     logoff,

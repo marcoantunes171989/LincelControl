@@ -155,6 +155,61 @@ class OracleIntegrationService {
     return { aliases, filePath }
   }
 
+  /**
+   * Importa o conteúdo do tnsnames.ora enviado pelo navegador,
+   * grava em DATA_DIR/network/admin e disponibiliza os aliases para logon.
+   */
+  async importTnsFile(content: string, fileName = 'tnsnames.ora'): Promise<{
+    aliases: TnsAliasInfo[]
+    aliasNames: string[]
+    tnsAdminPath: string
+    tnsFileName: string
+    filePath: string
+  }> {
+    const trimmed = content?.trim()
+    if (!trimmed) {
+      throw Object.assign(new Error('Arquivo TNS vazio.'), { statusCode: 400 })
+    }
+
+    const aliases = parseTnsNames(trimmed)
+    if (aliases.length === 0) {
+      throw Object.assign(new Error('Nenhum alias TNS encontrado no arquivo importado.'), { statusCode: 400 })
+    }
+
+    const safeName = (fileName || 'tnsnames.ora').replace(/[^\w.\-]/g, '') || 'tnsnames.ora'
+    const adminPath = path.join(env.dataDir, 'network', 'admin')
+    await fs.mkdir(adminPath, { recursive: true })
+    const filePath = path.join(adminPath, safeName)
+    await fs.writeFile(filePath, trimmed, 'utf8')
+
+    process.env.TNS_ADMIN = adminPath
+
+    const current = getOracleSettings()
+    saveOracleSettings({
+      tnsAdminPath: adminPath,
+      tnsFileName: safeName,
+      tnsAlias: current?.tnsAlias || aliases[0].alias,
+      oracleClientLibDir: current?.oracleClientLibDir || env.oracleClientLibDir,
+      expectedHost: aliases[0].hosts[0] || current?.expectedHost || '',
+      expectedPort: aliases[0].ports[0] ?? current?.expectedPort ?? 1521,
+      expectedDatabase: aliases[0].serviceName || aliases[0].sid || current?.expectedDatabase || '',
+      username: current?.username || '',
+    })
+
+    logger.info('Arquivo TNS importado pelo navegador', {
+      filePath,
+      aliasCount: aliases.length,
+    })
+
+    return {
+      aliases,
+      aliasNames: aliases.map((item) => item.alias),
+      tnsAdminPath: adminPath,
+      tnsFileName: safeName,
+      filePath,
+    }
+  }
+
   async validateConfiguration(options?: {
     password?: string
     includeAuth?: boolean
