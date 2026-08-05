@@ -10,24 +10,30 @@ import fs from 'node:fs/promises'
 import path from 'node:path'
 
 const configurationSchema = z.object({
-  tnsAdminPath: z.string().min(1),
+  tnsAdminPath: z.string().optional().default(''),
   tnsFileName: z.string().min(1).optional().default('tnsnames.ora'),
   tnsAlias: z.string().min(1),
-  oracleClientLibDir: z.string().min(1),
-  expectedHost: z.string().min(1),
-  expectedPort: z.coerce.number().int().min(1).max(65535),
-  expectedDatabase: z.string().min(1),
+  oracleClientLibDir: z.string().optional().default(''),
+  expectedHost: z.string().optional().default(''),
+  expectedPort: z.coerce.number().int().min(1).max(65535).optional().nullable(),
+  expectedDatabase: z.string().optional().default(''),
   username: z.string().min(1),
   isEnabled: z.boolean().optional(),
 })
 
 const connectSchema = z.object({
   password: z.string().min(1).optional(),
+  username: z.string().min(1).optional(),
+  tnsAlias: z.string().min(1).optional(),
+  mode: z.enum(['simple', 'full']).optional().default('simple'),
 })
 
 const toggleSchema = z.object({
   enabled: z.boolean(),
   password: z.string().min(1).optional(),
+  username: z.string().min(1).optional(),
+  tnsAlias: z.string().min(1).optional(),
+  mode: z.enum(['simple', 'full']).optional().default('simple'),
 })
 
 const querySchema = z.object({
@@ -130,6 +136,21 @@ oracleRouter.post(
   },
 )
 
+function applyLogonIdentity(body: { username?: string; tnsAlias?: string }) {
+  const current = oracleService.getSettings()
+  if (!body.username && !body.tnsAlias) return
+  oracleService.saveConfiguration({
+    tnsAdminPath: current?.tnsAdminPath,
+    tnsFileName: current?.tnsFileName,
+    tnsAlias: body.tnsAlias || current?.tnsAlias || '',
+    oracleClientLibDir: current?.oracleClientLibDir,
+    expectedHost: current?.expectedHost,
+    expectedPort: current?.expectedPort,
+    expectedDatabase: current?.expectedDatabase,
+    username: body.username || current?.username || '',
+  })
+}
+
 oracleRouter.post(
   '/validate',
   requirePermission('oracle.validate'),
@@ -138,10 +159,12 @@ oracleRouter.post(
   async (req, res, next) => {
     try {
       const body = connectSchema.parse(req.body ?? {})
+      applyLogonIdentity(body)
       if (body.password) oracleService.setPassword(body.password)
       const result = await oracleService.validateConfiguration({
         password: body.password,
         includeAuth: Boolean(body.password || oracleService.hasPassword()),
+        mode: body.mode ?? 'simple',
         actor: req.actor,
       })
       if (result.ok) resetPasswordAttempts(req.ip)
@@ -165,6 +188,7 @@ oracleRouter.post(
   async (req, res, next) => {
     try {
       const body = connectSchema.parse(req.body ?? {})
+      applyLogonIdentity(body)
       const status = await oracleService.connectOraclePool({
         password: body.password,
         actor: req.actor,
@@ -194,6 +218,7 @@ oracleRouter.post(
   async (req, res, next) => {
     try {
       const body = toggleSchema.parse(req.body)
+      if (body.enabled) applyLogonIdentity(body)
       if (body.enabled && body.password) oracleService.setPassword(body.password)
       const status = await oracleService.toggle(body.enabled, body.password, req.actor)
       if (body.enabled) resetPasswordAttempts(req.ip)

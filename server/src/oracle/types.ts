@@ -62,13 +62,13 @@ export interface OracleConnectionSettings {
 }
 
 export interface OracleConfigurationInput {
-  tnsAdminPath: string
+  tnsAdminPath?: string
   tnsFileName?: string
   tnsAlias: string
-  oracleClientLibDir: string
-  expectedHost: string
-  expectedPort: number
-  expectedDatabase: string
+  oracleClientLibDir?: string
+  expectedHost?: string
+  expectedPort?: number | null
+  expectedDatabase?: string
   username: string
   isEnabled?: boolean
 }

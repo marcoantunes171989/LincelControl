@@ -1,18 +1,17 @@
 import {
-  Cable,
+  ChevronDown,
+  ChevronUp,
   Database,
   Eye,
   EyeOff,
-  FileSearch,
-  HardDrive,
-  KeyRound,
   Loader2,
+  LogIn,
+  LogOut,
   RefreshCw,
+  Settings2,
   ShieldAlert,
-  Stethoscope,
 } from 'lucide-react'
 import { StatusBadge } from '../StatusBadge'
-import { ConnectionToggle } from './ConnectionToggle'
 import { DiagnosticStepList } from './DiagnosticStepList'
 import { SettingsInput } from './SettingsInput'
 import { useOracleIntegration } from '../../hooks/useOracleIntegration'
@@ -58,26 +57,36 @@ export function OracleIntegrationPage({ onToast }: OracleIntegrationPageProps) {
     form,
     status,
     aliases,
-    selectedAliasInfo,
     stages,
     progress,
     busy,
     error,
     showPassword,
+    showAdvanced,
     apiReachable,
     setShowPassword,
+    setShowAdvanced,
     updateField,
-    saveConfiguration,
-    validateClient,
-    loadAliases,
-    selectAlias,
-    runValidation,
-    toggleConnection,
     refreshStatus,
+    loadAliases,
+    logon,
+    logoff,
+    saveAdvanced,
   } = useOracleIntegration()
 
   const currentStatus: OracleConnectionStatus =
     status?.status && status.status in STATUS_LABELS ? status.status : 'not_configured'
+  const connected = Boolean(status?.connected)
+
+  const handleLogon = async () => {
+    const ok = await logon()
+    if (ok) onToast?.('Logon Oracle realizado com sucesso.')
+  }
+
+  const handleLogoff = async () => {
+    const ok = await logoff()
+    if (ok) onToast?.('Desconectado. Configuração preservada.')
+  }
 
   return (
     <div className="flex flex-col gap-6">
@@ -89,14 +98,11 @@ export function OracleIntegrationPage({ onToast }: OracleIntegrationPageProps) {
               Integração Oracle
             </h2>
             <p className="mt-1 max-w-3xl text-sm text-slate-500">
-              Configure o Oracle Client, o caminho do <code className="font-mono">tnsnames.ora</code> e conecte-se ao
-              banco do cliente pela API interna. A senha nunca é salva em texto simples.
+              Conexão no estilo PL/SQL Developer: informe Username, Password e Database (alias TNS) e clique em OK.
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <StatusBadge variant={statusVariant(currentStatus)}>
-              {STATUS_LABELS[currentStatus]}
-            </StatusBadge>
+            <StatusBadge variant={statusVariant(currentStatus)}>{STATUS_LABELS[currentStatus]}</StatusBadge>
             <button
               type="button"
               disabled={busy}
@@ -112,8 +118,7 @@ export function OracleIntegrationPage({ onToast }: OracleIntegrationPageProps) {
         {apiReachable === false && (
           <div className="mt-4 flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
             <ShieldAlert size={16} className="mt-0.5 shrink-0" aria-hidden="true" />
-            API interna indisponível. Execute <code className="font-mono">npm run dev:server</code> (porta 8787) e
-            confira <code className="font-mono">VITE_API_BASE_URL</code>.
+            API interna indisponível. Execute <code className="font-mono">npm run dev:server</code> (porta 8787).
           </div>
         )}
 
@@ -131,285 +136,236 @@ export function OracleIntegrationPage({ onToast }: OracleIntegrationPageProps) {
         )}
       </section>
 
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
-        <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
-          <h3 className="flex items-center gap-2 text-base font-semibold text-slate-900">
-            <HardDrive size={17} className="text-blue-600" aria-hidden="true" />
-            Card 1 — Oracle Client
-          </h3>
-          <p className="mt-1 text-sm text-slate-500">Caminho local do Instant Client / Oracle Client (OCI.DLL).</p>
+      {/* Oracle Logon — estilo PL/SQL */}
+      <section className="mx-auto w-full max-w-xl rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+        <div className="mb-5 flex items-center gap-3 border-b border-slate-100 pb-4">
+          <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-gradient-to-br from-rose-500 to-rose-600 text-white shadow-sm">
+            <Database size={28} aria-hidden="true" />
+          </div>
+          <div>
+            <h3 className="text-base font-semibold text-slate-900">Oracle Logon</h3>
+            <p className="text-sm text-slate-500">Username, Password e Database (TNS)</p>
+          </div>
+        </div>
+
+        <form
+          className="space-y-3"
+          onSubmit={(event) => {
+            event.preventDefault()
+            if (connected) void handleLogoff()
+            else void handleLogon()
+          }}
+        >
+          <SettingsInput
+            id="username"
+            label="Username"
+            value={form.username}
+            onChange={(value) => updateField('username', value)}
+            placeholder="ex.: intersolid"
+            required
+            disabled={busy || connected}
+          />
+
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor="password" className="text-sm font-medium text-slate-700">
+              Password
+              <span className="text-red-600"> *</span>
+            </label>
+            <div className="relative">
+              <input
+                id="password"
+                type={showPassword ? 'text' : 'password'}
+                value={form.password}
+                autoComplete="current-password"
+                disabled={busy || connected}
+                placeholder={
+                  status?.passwordAvailableInMemory && !form.password
+                    ? 'Senha já disponível na API'
+                    : ''
+                }
+                onChange={(event) => updateField('password', event.target.value)}
+                className="min-h-11 w-full rounded-lg border border-slate-300 px-3 py-2 pr-11 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 disabled:bg-slate-50"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword((value) => !value)}
+                className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-1.5 text-slate-500 hover:bg-slate-100"
+                aria-label={showPassword ? 'Ocultar senha' : 'Mostrar senha'}
+              >
+                {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
+            </div>
+            <p className="text-xs text-slate-500">A senha não é salva em arquivo ou localStorage.</p>
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor="database" className="text-sm font-medium text-slate-700">
+              Database
+              <span className="text-red-600"> *</span>
+            </label>
+            <div className="flex gap-2">
+              <input
+                id="database"
+                list="tns-aliases"
+                value={form.tnsAlias}
+                disabled={busy || connected}
+                placeholder="ex.: ORCL"
+                onChange={(event) => updateField('tnsAlias', event.target.value.toUpperCase())}
+                className="min-h-11 w-full rounded-lg border border-slate-300 px-3 py-2 font-mono text-sm uppercase outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 disabled:bg-slate-50"
+              />
+              <button
+                type="button"
+                disabled={busy || connected}
+                title="Listar aliases do tnsnames.ora"
+                onClick={() => void loadAliases().catch(() => undefined)}
+                className="inline-flex min-h-11 shrink-0 items-center justify-center rounded-lg border border-slate-300 px-3 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"
+              >
+                …
+              </button>
+            </div>
+            <datalist id="tns-aliases">
+              {aliases.map((alias) => (
+                <option key={alias} value={alias} />
+              ))}
+            </datalist>
+            <p className="text-xs text-slate-500">Alias TNS definido no tnsnames.ora (como no campo Database do PL/SQL).</p>
+          </div>
+
+          <label className="flex flex-col gap-1.5">
+            <span className="text-sm font-medium text-slate-700">Connect as</span>
+            <select
+              disabled
+              className="min-h-11 rounded-lg border border-slate-300 bg-slate-50 px-3 text-sm text-slate-600"
+              defaultValue="Normal"
+            >
+              <option value="Normal">Normal</option>
+            </select>
+          </label>
+
+          <div className="flex flex-wrap justify-end gap-2 border-t border-slate-100 pt-4">
+            {connected ? (
+              <button
+                type="submit"
+                disabled={busy || apiReachable === false}
+                className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"
+              >
+                <LogOut size={16} aria-hidden="true" />
+                Cancel / Desconectar
+              </button>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => {
+                    updateField('password', '')
+                  }}
+                  className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 text-sm font-medium text-slate-600 transition hover:bg-slate-50 disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={busy || apiReachable === false}
+                  className="inline-flex min-h-11 items-center gap-2 rounded-lg bg-blue-600 px-5 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400"
+                >
+                  {busy ? <Loader2 size={16} className="animate-spin" /> : <LogIn size={16} />}
+                  OK
+                </button>
+              </>
+            )}
+          </div>
+        </form>
+      </section>
+
+      {/* Status resumido */}
+      <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+        <h3 className="text-base font-semibold text-slate-900">Sessão</h3>
+        <dl className="mt-3 grid grid-cols-1 gap-2 text-sm sm:grid-cols-2 lg:grid-cols-4">
+          <div className="rounded-lg bg-slate-50 px-3 py-2">
+            <dt className="text-xs text-slate-500">Database</dt>
+            <dd className="font-mono font-medium text-slate-800">{status?.database?.alias || form.tnsAlias || '—'}</dd>
+          </div>
+          <div className="rounded-lg bg-slate-50 px-3 py-2">
+            <dt className="text-xs text-slate-500">Usuário</dt>
+            <dd className="font-medium text-slate-800">{status?.database?.sessionUser || form.username || '—'}</dd>
+          </div>
+          <div className="rounded-lg bg-slate-50 px-3 py-2">
+            <dt className="text-xs text-slate-500">Host / Serviço</dt>
+            <dd className="font-medium text-slate-800">
+              {status?.database?.host || '—'}
+              {status?.database?.port ? `:${status.database.port}` : ''}{' '}
+              {status?.database?.serviceName || status?.database?.sid
+                ? `/ ${status.database.serviceName || status.database.sid}`
+                : ''}
+            </dd>
+          </div>
+          <div className="rounded-lg bg-slate-50 px-3 py-2">
+            <dt className="text-xs text-slate-500">Última conexão</dt>
+            <dd className="font-medium text-slate-800">{formatDate(status?.lastConnectedAt)}</dd>
+          </div>
+        </dl>
+      </section>
+
+      {/* Ambiente avançado */}
+      <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+        <button
+          type="button"
+          onClick={() => setShowAdvanced((value) => !value)}
+          className="flex w-full items-center justify-between gap-2 text-left"
+        >
+          <span className="flex items-center gap-2 text-base font-semibold text-slate-900">
+            <Settings2 size={17} className="text-blue-600" aria-hidden="true" />
+            Ambiente (Oracle Client / TNS_ADMIN)
+          </span>
+          {showAdvanced ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+        </button>
+        <p className="mt-1 text-sm text-slate-500">
+          Opcional se já estiver no <code className="font-mono">.env</code>. Equivale ao Instant Client usado pelo PL/SQL.
+        </p>
+
+        {showAdvanced && (
           <div className="mt-4 space-y-3">
             <SettingsInput
               id="oracleClientLibDir"
-              label="Caminho do Oracle Client"
+              label="Oracle Client (libDir)"
               value={form.oracleClientLibDir}
               onChange={(value) => updateField('oracleClientLibDir', value)}
               placeholder="C:\Oracle\instantclient_19_25"
-              required
             />
-            <dl className="grid grid-cols-1 gap-2 text-sm sm:grid-cols-2">
-              <div className="rounded-lg bg-slate-50 px-3 py-2">
-                <dt className="text-xs text-slate-500">OCI.DLL</dt>
-                <dd className="font-medium text-slate-800">
-                  {status?.ociDllFound === null || status?.ociDllFound === undefined
-                    ? 'Não verificado'
-                    : status.ociDllFound
-                      ? 'Encontrada'
-                      : 'Não encontrada'}
-                </dd>
-              </div>
-              <div className="rounded-lg bg-slate-50 px-3 py-2">
-                <dt className="text-xs text-slate-500">Versão / Arquitetura</dt>
-                <dd className="font-medium text-slate-800">
-                  {status?.clientVersion || '—'} / {status?.clientArchitecture || '—'}
-                </dd>
-              </div>
-            </dl>
-            <button
-              type="button"
-              disabled={busy || !form.oracleClientLibDir}
-              onClick={() => void validateClient().catch(() => undefined)}
-              className="inline-flex min-h-11 items-center gap-2 rounded-lg bg-blue-600 px-3 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400"
-            >
-              Validar Client
-            </button>
-          </div>
-        </section>
-
-        <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
-          <h3 className="flex items-center gap-2 text-base font-semibold text-slate-900">
-            <FileSearch size={17} className="text-blue-600" aria-hidden="true" />
-            Card 2 — Arquivo TNS
-          </h3>
-          <p className="mt-1 text-sm text-slate-500">Prefira caminho UNC em vez de unidade mapeada.</p>
-          <div className="mt-4 space-y-3">
             <SettingsInput
               id="tnsAdminPath"
-              label="Diretório TNS_ADMIN"
+              label="TNS_ADMIN"
               value={form.tnsAdminPath}
               onChange={(value) => updateField('tnsAdminPath', value)}
-              placeholder="\\SERVIDOR-ARQUIVOS\Oracle\Network\Admin"
-              required
+              placeholder="\\SERVIDOR\Oracle\Network\Admin"
             />
             <SettingsInput
               id="tnsFileName"
-              label="Nome do arquivo"
+              label="Arquivo TNS"
               value={form.tnsFileName}
               onChange={(value) => updateField('tnsFileName', value)}
               placeholder="tnsnames.ora"
             />
-            <div className="flex flex-wrap gap-2">
-              <button
-                type="button"
-                disabled={busy || !form.tnsAdminPath}
-                onClick={() => void loadAliases().catch(() => undefined)}
-                className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"
-              >
-                Validar arquivo / listar aliases
-              </button>
-            </div>
-            {aliases.length > 0 && (
-              <label className="flex flex-col gap-1.5">
-                <span className="text-sm font-medium text-slate-700">Alias TNS</span>
-                <select
-                  value={form.tnsAlias}
-                  disabled={busy}
-                  onChange={(event) => void selectAlias(event.target.value).catch(() => undefined)}
-                  className="min-h-11 rounded-lg border border-slate-300 px-3 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
-                >
-                  <option value="">Selecione...</option>
-                  {aliases.map((alias) => (
-                    <option key={alias} value={alias}>
-                      {alias}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            )}
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <SettingsInput
-                id="expectedHost"
-                label="HOST / IP esperado"
-                value={form.expectedHost}
-                onChange={(value) => updateField('expectedHost', value)}
-                required
-              />
-              <SettingsInput
-                id="expectedPort"
-                label="PORT esperada"
-                value={form.expectedPort}
-                onChange={(value) => updateField('expectedPort', value)}
-                required
-              />
-              <SettingsInput
-                id="expectedDatabase"
-                label="SERVICE_NAME ou SID"
-                value={form.expectedDatabase}
-                onChange={(value) => updateField('expectedDatabase', value)}
-                required
-              />
-              <SettingsInput
-                id="tnsAliasManual"
-                label="Alias selecionado"
-                value={form.tnsAlias}
-                onChange={(value) => updateField('tnsAlias', value)}
-                required
-              />
-            </div>
-            {selectedAliasInfo && (
-              <p className="text-xs text-slate-500">
-                Extraído do TNS: {selectedAliasInfo.hosts.join(', ')}:{' '}
-                {selectedAliasInfo.ports.join(', ')} / {selectedAliasInfo.serviceName || selectedAliasInfo.sid || '—'}
-                {selectedAliasInfo.hasMultipleHosts ? ' (múltiplos hosts)' : ''}
-              </p>
-            )}
-          </div>
-        </section>
-
-        <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
-          <h3 className="flex items-center gap-2 text-base font-semibold text-slate-900">
-            <KeyRound size={17} className="text-blue-600" aria-hidden="true" />
-            Card 3 — Credenciais
-          </h3>
-          <p className="mt-1 text-sm text-slate-500">
-            A senha permanece somente em memória no backend durante a execução do processo.
-          </p>
-          <div className="mt-4 space-y-3">
-            <SettingsInput
-              id="username"
-              label="Usuário Oracle"
-              value={form.username}
-              onChange={(value) => updateField('username', value)}
-              required
-            />
-            <div className="flex flex-col gap-1.5">
-              <label htmlFor="password" className="text-sm font-medium text-slate-700">
-                Senha Oracle
-              </label>
-              <div className="relative">
-                <input
-                  id="password"
-                  type={showPassword ? 'text' : 'password'}
-                  value={form.password}
-                  autoComplete="off"
-                  onChange={(event) => updateField('password', event.target.value)}
-                  className="min-h-11 w-full rounded-lg border border-slate-300 px-3 py-2 pr-11 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword((value) => !value)}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-1.5 text-slate-500 hover:bg-slate-100"
-                  aria-label={showPassword ? 'Ocultar senha' : 'Mostrar senha'}
-                >
-                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                </button>
-              </div>
-              <p className="text-xs text-slate-500">A senha não será salva em texto simples, JSON ou localStorage.</p>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              <button
-                type="button"
-                disabled={busy}
-                onClick={() => void saveConfiguration()}
-                className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"
-              >
-                Salvar configuração
-              </button>
-              <button
-                type="button"
-                disabled={busy}
-                onClick={() => void runValidation().catch(() => undefined)}
-                className="inline-flex min-h-11 items-center gap-2 rounded-lg bg-blue-600 px-3 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400"
-              >
-                Validar credenciais
-              </button>
-            </div>
-          </div>
-        </section>
-
-        <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
-          <h3 className="flex items-center gap-2 text-base font-semibold text-slate-900">
-            <Cable size={17} className="text-blue-600" aria-hidden="true" />
-            Card 4 — Conexão
-          </h3>
-          <p className="mt-1 text-sm text-slate-500">Interruptor conectar/desconectar com preservação das configurações.</p>
-          <div className="mt-4 space-y-4">
-            <ConnectionToggle
-              connected={Boolean(status?.connected)}
-              busy={busy}
-              disabled={apiReachable === false}
-              onToggle={(enabled) => {
-                void toggleConnection(enabled).then((ok) => {
-                  if (ok) {
-                    onToast?.(
-                      enabled
-                        ? 'Conexão Oracle ativada.'
-                        : 'Conexão Oracle desligada. Configurações preservadas.',
-                    )
-                  }
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() =>
+                void saveAdvanced().then((ok) => {
+                  if (ok) onToast?.('Ambiente Oracle salvo.')
                 })
-              }}
-            />
-            <dl className="grid grid-cols-1 gap-2 text-sm sm:grid-cols-2">
-              <div className="rounded-lg bg-slate-50 px-3 py-2">
-                <dt className="text-xs text-slate-500">Última conexão</dt>
-                <dd className="font-medium text-slate-800">{formatDate(status?.lastConnectedAt)}</dd>
-              </div>
-              <div className="rounded-lg bg-slate-50 px-3 py-2">
-                <dt className="text-xs text-slate-500">Última validação</dt>
-                <dd className="font-medium text-slate-800">
-                  {formatDate(status?.lastValidatedAt)}
-                  {status?.lastValidationDurationMs != null ? ` (${status.lastValidationDurationMs} ms)` : ''}
-                </dd>
-              </div>
-              <div className="rounded-lg bg-slate-50 px-3 py-2">
-                <dt className="text-xs text-slate-500">Pool aberto / em uso</dt>
-                <dd className="font-medium text-slate-800">
-                  {status?.pool
-                    ? `${status.pool.connectionsOpen} / ${status.pool.connectionsInUse}`
-                    : '—'}
-                </dd>
-              </div>
-              <div className="rounded-lg bg-slate-50 px-3 py-2">
-                <dt className="text-xs text-slate-500">Último erro</dt>
-                <dd className="font-medium text-slate-800">{status?.lastError || '—'}</dd>
-              </div>
-            </dl>
-            <dl className="grid grid-cols-1 gap-2 text-sm sm:grid-cols-2">
-              <div className="rounded-lg border border-slate-100 px-3 py-2">
-                <dt className="text-xs text-slate-500">Alias / Usuário</dt>
-                <dd className="font-medium text-slate-800">
-                  {status?.database?.alias || '—'} / {status?.database?.sessionUser || form.username || '—'}
-                </dd>
-              </div>
-              <div className="rounded-lg border border-slate-100 px-3 py-2">
-                <dt className="text-xs text-slate-500">Host:Porta / DB</dt>
-                <dd className="font-medium text-slate-800">
-                  {status?.database?.host || '—'}:{status?.database?.port || '—'} /{' '}
-                  {status?.database?.serviceName || status?.database?.sid || '—'}
-                </dd>
-              </div>
-              <div className="rounded-lg border border-slate-100 px-3 py-2">
-                <dt className="text-xs text-slate-500">Instância / Servidor</dt>
-                <dd className="font-medium text-slate-800">
-                  {status?.database?.instanceName || '—'} / {status?.database?.serverHost || '—'}
-                </dd>
-              </div>
-              <div className="rounded-lg border border-slate-100 px-3 py-2">
-                <dt className="text-xs text-slate-500">Versão do banco</dt>
-                <dd className="font-medium text-slate-800">{status?.database?.oracleVersion || '—'}</dd>
-              </div>
-            </dl>
+              }
+              className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"
+            >
+              Salvar ambiente
+            </button>
           </div>
-        </section>
-      </div>
+        )}
+      </section>
 
       <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
-        <h3 className="flex items-center gap-2 text-base font-semibold text-slate-900">
-          <Stethoscope size={17} className="text-blue-600" aria-hidden="true" />
-          Card 5 — Diagnóstico
-        </h3>
-        <p className="mt-1 text-sm text-slate-500">Cada etapa da validação é exibida de forma independente.</p>
+        <h3 className="text-base font-semibold text-slate-900">Diagnóstico da última conexão</h3>
+        <p className="mt-1 text-sm text-slate-500">Etapas executadas no logon (TNS + autenticação).</p>
         <div className="mt-4">
           <DiagnosticStepList stages={stages} running={busy} />
         </div>

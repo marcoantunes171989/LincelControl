@@ -158,6 +158,8 @@ class OracleIntegrationService {
   async validateConfiguration(options?: {
     password?: string
     includeAuth?: boolean
+    /** simple = fluxo PL/SQL (TNS + usuário/senha). full = diagnósticos extras. */
+    mode?: 'simple' | 'full'
     actor?: string
   }): Promise<{ ok: boolean; stages: StageResult[]; alias: TnsAliasInfo | null }> {
     this.ensureNotBusy()
@@ -165,23 +167,28 @@ class OracleIntegrationService {
     this.status = 'validating'
     this.stages = []
     const started = Date.now()
+    const mode = options?.mode ?? 'simple'
 
     try {
       const settings = getOracleSettings()
-      if (!settings) {
+      if (!settings?.tnsAlias || !settings.username) {
         this.status = 'not_configured'
-        throw Object.assign(new Error('Integração Oracle ainda não configurada.'), { statusCode: 400 })
+        throw Object.assign(new Error('Informe Database (TNS) e Username para conectar.'), { statusCode: 400 })
       }
 
       if (options?.password) this.setPassword(options.password)
       logger.info('Início de validação Oracle', {
         actor: options?.actor ?? 'system',
         alias: settings.tnsAlias,
+        mode,
       })
+
+      const libDir = settings.oracleClientLibDir || env.oracleClientLibDir
+      const tnsAdmin = settings.tnsAdminPath || env.oracleTnsAdmin
 
       // 1. Oracle Client
       const clientStarted = Date.now()
-      const client = initializeOracleClient(settings.oracleClientLibDir, settings.tnsAdminPath)
+      const client = initializeOracleClient(libDir, tnsAdmin || undefined)
       this.clientVersion = client.clientVersion
       this.ociDllFound = client.ociDllFound
       this.pushStage({
@@ -203,124 +210,176 @@ class OracleIntegrationService {
         return { ok: false, stages: this.stages, alias: null }
       }
 
-      // 2. Arquivo TNS
-      const tnsStarted = Date.now()
-      let content = ''
-      try {
-        await fs.access(settings.tnsAdminPath)
-        const filePath = path.join(settings.tnsAdminPath, settings.tnsFileName)
-        await fs.access(filePath)
-        content = await this.readTnsFile(settings.tnsAdminPath, settings.tnsFileName)
+      // 2–3. TNS / alias (opcional no modo simple — o Client resolve o alias)
+      let aliasInfo: TnsAliasInfo | null = null
+      if (tnsAdmin) {
+        const tnsStarted = Date.now()
+        try {
+          await fs.access(tnsAdmin)
+          const filePath = path.join(tnsAdmin, settings.tnsFileName || 'tnsnames.ora')
+          await fs.access(filePath)
+          const content = await this.readTnsFile(tnsAdmin, settings.tnsFileName || 'tnsnames.ora')
+          this.pushStage({
+            stage: 'tns-file',
+            ok: true,
+            status: 'success',
+            message: `Arquivo TNS lido (${settings.tnsFileName || 'tnsnames.ora'}).`,
+            durationMs: Date.now() - tnsStarted,
+            details: { filePath, aliasCount: parseTnsNames(content).length },
+          })
+
+          aliasInfo = findTnsAlias(content, settings.tnsAlias)
+          this.parsedAlias = aliasInfo
+          this.pushStage({
+            stage: 'tns-alias',
+            ok: Boolean(aliasInfo),
+            status: aliasInfo ? 'success' : mode === 'simple' ? 'warning' : 'error',
+            message: aliasInfo
+              ? `Database ${aliasInfo.alias} encontrado no TNS.`
+              : `Alias ${settings.tnsAlias} não listado no tnsnames.ora. Tentando conexão direta pelo Client.`,
+            details: aliasInfo
+              ? {
+                  hosts: aliasInfo.hosts,
+                  ports: aliasInfo.ports,
+                  serviceName: aliasInfo.serviceName,
+                  sid: aliasInfo.sid,
+                }
+              : undefined,
+          })
+
+          if (!aliasInfo && mode === 'full') {
+            this.status = 'tns_unavailable'
+            this.lastError = `Alias ${settings.tnsAlias} não encontrado.`
+            return { ok: false, stages: this.stages, alias: null }
+          }
+
+          // Auto-preenche host/porta/banco a partir do TNS (estilo PL/SQL)
+          if (aliasInfo) {
+            saveOracleSettings({
+              tnsAdminPath: tnsAdmin,
+              tnsFileName: settings.tnsFileName,
+              tnsAlias: settings.tnsAlias,
+              oracleClientLibDir: libDir,
+              expectedHost: aliasInfo.hosts[0] || settings.expectedHost,
+              expectedPort: aliasInfo.ports[0] ?? settings.expectedPort,
+              expectedDatabase: aliasInfo.serviceName || aliasInfo.sid || settings.expectedDatabase,
+              username: settings.username,
+            })
+          }
+        } catch (error) {
+          const message = error instanceof Error ? error.message : 'Falha ao ler TNS'
+          this.pushStage({
+            stage: 'tns-file',
+            ok: mode === 'simple',
+            status: mode === 'simple' ? 'warning' : 'error',
+            message:
+              mode === 'simple'
+                ? `TNS local não lido (${message}). Conexão seguirá pelo alias informado, como no PL/SQL.`
+                : `TNS indisponível: ${message}`,
+            durationMs: Date.now() - tnsStarted,
+          })
+          if (mode === 'full') {
+            this.status = 'tns_unavailable'
+            this.lastError = message
+            return { ok: false, stages: this.stages, alias: null }
+          }
+        }
+      } else {
         this.pushStage({
           stage: 'tns-file',
           ok: true,
-          status: 'success',
-          message: `Arquivo TNS lido com sucesso (${settings.tnsFileName}).`,
-          durationMs: Date.now() - tnsStarted,
-          details: { filePath, aliasCount: parseTnsNames(content).length },
+          status: 'skipped',
+          message: 'TNS_ADMIN não informado. Usando resolução padrão do Oracle Client.',
         })
-        logger.info('Resultado da leitura do TNS', { filePath, ok: true })
-      } catch (error) {
-        const message = error instanceof Error ? error.message : 'Falha ao ler TNS'
+      }
+
+      const latest = getOracleSettings() || settings
+      const host = latest.expectedHost || aliasInfo?.hosts[0] || ''
+      const port = latest.expectedPort || aliasInfo?.ports[0] || 1521
+
+      if (mode === 'full' && host) {
+        const comparison = compareTnsWithExpected(aliasInfo || {
+          alias: latest.tnsAlias,
+          hosts: host ? [host] : [],
+          ports: [Number(port)],
+          protocols: [],
+          serviceName: latest.expectedDatabase || null,
+          sid: null,
+          addresses: [],
+          hasFailover: false,
+          hasMultipleHosts: false,
+        }, {
+          host: latest.expectedHost,
+          port: Number(latest.expectedPort),
+          database: latest.expectedDatabase,
+        })
         this.pushStage({
-          stage: 'tns-file',
-          ok: false,
-          status: 'error',
-          message: `TNS indisponível: ${message}`,
-          durationMs: Date.now() - tnsStarted,
+          stage: 'tns-comparison',
+          ok: comparison.ok,
+          status: comparison.ok ? (comparison.warning ? 'warning' : 'success') : 'error',
+          message: comparison.message,
+          expected: comparison.expected,
+          found: comparison.found,
         })
-        this.status = 'tns_unavailable'
-        this.lastError = message
-        return { ok: false, stages: this.stages, alias: null }
+        if (!comparison.ok) {
+          this.status = 'error'
+          this.lastError = comparison.message
+          return { ok: false, stages: this.stages, alias: aliasInfo }
+        }
+
+        const dns = await resolveHost(host)
+        this.pushStage({
+          stage: 'dns',
+          ok: dns.ok,
+          status: dns.ok ? 'success' : 'error',
+          message: dns.message,
+          details: { addresses: dns.addresses, isIp: dns.isIp },
+        })
+        if (!dns.ok) {
+          this.status = 'database_unreachable'
+          this.lastError = dns.message
+          return { ok: false, stages: this.stages, alias: aliasInfo }
+        }
+
+        const tcp = await testTcpConnection(host, Number(port), env.oracleTcpTimeoutMs)
+        this.pushStage({
+          stage: 'tcp',
+          ok: tcp.ok,
+          status: tcp.ok ? 'success' : 'error',
+          message: tcp.ok
+            ? tcp.message
+            : `Não foi possível acessar o servidor Oracle em ${host}:${port}.`,
+          durationMs: tcp.durationMs,
+        })
+        if (!tcp.ok) {
+          this.status = 'database_unreachable'
+          this.lastError = tcp.message
+          return { ok: false, stages: this.stages, alias: aliasInfo }
+        }
+      } else {
+        this.pushStage({
+          stage: 'tns-comparison',
+          ok: true,
+          status: 'skipped',
+          message: 'Modo logon simples: validação direta por TNS + usuário/senha.',
+        })
+        this.pushStage({
+          stage: 'dns',
+          ok: true,
+          status: 'skipped',
+          message: 'DNS omitido no modo logon simples.',
+        })
+        this.pushStage({
+          stage: 'tcp',
+          ok: true,
+          status: 'skipped',
+          message: 'Teste TCP omitido no modo logon simples.',
+        })
       }
 
-      // 3. Alias
-      const aliasInfo = findTnsAlias(content, settings.tnsAlias)
-      this.parsedAlias = aliasInfo
-      this.pushStage({
-        stage: 'tns-alias',
-        ok: Boolean(aliasInfo),
-        status: aliasInfo ? 'success' : 'error',
-        message: aliasInfo
-          ? `Alias ${aliasInfo.alias} localizado.`
-          : `Alias ${settings.tnsAlias} não encontrado no tnsnames.ora.`,
-        details: aliasInfo
-          ? {
-              hosts: aliasInfo.hosts,
-              ports: aliasInfo.ports,
-              serviceName: aliasInfo.serviceName,
-              sid: aliasInfo.sid,
-              hasFailover: aliasInfo.hasFailover,
-            }
-          : undefined,
-      })
-      if (!aliasInfo) {
-        this.status = 'tns_unavailable'
-        this.lastError = `Alias ${settings.tnsAlias} não encontrado.`
-        return { ok: false, stages: this.stages, alias: null }
-      }
-      logger.info('Alias TNS selecionado', { alias: aliasInfo.alias, hosts: aliasInfo.hosts })
-
-      // 4. Comparação HOST/PORT/DB
-      const comparison = compareTnsWithExpected(aliasInfo, {
-        host: settings.expectedHost,
-        port: Number(settings.expectedPort),
-        database: settings.expectedDatabase,
-      })
-      this.pushStage({
-        stage: 'tns-comparison',
-        ok: comparison.ok,
-        status: comparison.ok ? (comparison.warning ? 'warning' : 'success') : 'error',
-        message: comparison.message,
-        expected: comparison.expected,
-        found: comparison.found,
-      })
-      if (!comparison.ok) {
-        this.status = 'error'
-        this.lastError = comparison.message
-        return { ok: false, stages: this.stages, alias: aliasInfo }
-      }
-
-      // 5. DNS
-      const dns = await resolveHost(settings.expectedHost)
-      this.pushStage({
-        stage: 'dns',
-        ok: dns.ok,
-        status: dns.ok ? 'success' : 'error',
-        message: dns.message,
-        details: { addresses: dns.addresses, isIp: dns.isIp },
-      })
-      if (!dns.ok) {
-        this.status = 'database_unreachable'
-        this.lastError = dns.message
-        return { ok: false, stages: this.stages, alias: aliasInfo }
-      }
-
-      // 6. TCP
-      const tcp = await testTcpConnection(
-        settings.expectedHost,
-        Number(settings.expectedPort),
-        env.oracleTcpTimeoutMs,
-      )
-      this.pushStage({
-        stage: 'tcp',
-        ok: tcp.ok,
-        status: tcp.ok ? 'success' : 'error',
-        message: tcp.ok
-          ? tcp.message
-          : `Não foi possível acessar o servidor Oracle em ${settings.expectedHost}:${settings.expectedPort}. Verifique se o servidor está ligado, se a porta está liberada, se o listener está ativo e se há VPN/rede.`,
-        durationMs: tcp.durationMs,
-      })
-      logger.info('Resultado do teste TCP', { ok: tcp.ok, durationMs: tcp.durationMs })
-      if (!tcp.ok) {
-        this.status = 'database_unreachable'
-        this.lastError = tcp.message
-        return { ok: false, stages: this.stages, alias: aliasInfo }
-      }
-
-      // 7. TNSPING (opcional)
-      process.env.TNS_ADMIN = settings.tnsAdminPath
-      const ping = await runTnsPing(settings.tnsAlias, settings.oracleClientLibDir)
+      // TNSPING (opcional)
+      if (tnsAdmin) process.env.TNS_ADMIN = tnsAdmin
+      const ping = await runTnsPing(latest.tnsAlias, libDir)
       this.pushStage({
         stage: 'tnsping',
         ok: ping.available ? ping.ok : true,
@@ -333,11 +392,6 @@ class OracleIntegrationService {
           executable: ping.executable,
         },
       })
-      logger.info('Resultado do tnsping', {
-        available: ping.available,
-        ok: ping.ok,
-        exitCode: ping.exitCode,
-      })
 
       const includeAuth = options?.includeAuth !== false
       if (!includeAuth) {
@@ -345,7 +399,7 @@ class OracleIntegrationService {
         this.lastValidationDurationMs = Date.now() - started
         updateOracleValidationMeta({
           lastValidationStatus: 'partial_ok',
-          lastValidationMessage: 'Validação de rede/TNS concluída.',
+          lastValidationMessage: 'Validação de TNS concluída.',
           lastValidatedAt: new Date().toISOString(),
         })
         return { ok: true, stages: this.stages, alias: aliasInfo }
@@ -356,22 +410,22 @@ class OracleIntegrationService {
           stage: 'authentication',
           ok: false,
           status: 'error',
-          message: 'Senha Oracle necessária para validar autenticação.',
+          message: 'Informe a senha Oracle.',
         })
         this.status = 'password_required'
         this.lastError = 'Senha necessária'
         return { ok: false, stages: this.stages, alias: aliasInfo }
       }
 
-      // 8. Autenticação + DUAL + sessão
+      // Autenticação + DUAL (equivalente ao OK do PL/SQL Developer)
       const authStarted = Date.now()
       const oracledb = getOracledb()
       let connection: Connection | null = null
       try {
         connection = await oracledb.getConnection({
-          user: settings.username,
+          user: latest.username,
           password: this.passwordInMemory,
-          connectString: settings.tnsAlias,
+          connectString: latest.tnsAlias,
         })
 
         const dual = await connection.execute<{ RESULTADO: number }>(
@@ -429,9 +483,9 @@ class OracleIntegrationService {
         }
 
         this.sessionInfo = {
-          sessionUser: row.SESSION_USER ?? settings.username,
+          sessionUser: row.SESSION_USER ?? latest.username,
           databaseName: row.DATABASE_NAME ?? null,
-          serviceName: row.SERVICE_NAME ?? aliasInfo.serviceName,
+          serviceName: row.SERVICE_NAME ?? aliasInfo?.serviceName ?? null,
           instanceName: row.INSTANCE_NAME ?? null,
           serverHost: row.SERVER_HOST ?? null,
           containerName: row.CONTAINER_NAME ?? null,
@@ -440,8 +494,8 @@ class OracleIntegrationService {
 
         logger.info('Tentativa de conexão Oracle bem-sucedida', {
           actor: options?.actor ?? 'system',
-          alias: settings.tnsAlias,
-          username: settings.username,
+          alias: latest.tnsAlias,
+          username: latest.username,
         })
       } catch (error) {
         const translated = translateOracleError(error, 'authentication')
@@ -507,6 +561,7 @@ class OracleIntegrationService {
       const validation = await this.validateConfiguration({
         password: this.passwordInMemory,
         includeAuth: true,
+        mode: 'simple',
         actor: options?.actor,
       })
       this.busy = true
@@ -723,13 +778,9 @@ class OracleIntegrationService {
     const settings = getOracleSettings()
     const client = getOracleClientState()
     const configured = Boolean(
-      settings?.tnsAdminPath &&
-        settings.tnsAlias &&
-        settings.oracleClientLibDir &&
-        settings.expectedHost &&
-        settings.expectedPort &&
-        settings.expectedDatabase &&
-        settings.username,
+      settings?.tnsAlias &&
+        settings.username &&
+        (settings.oracleClientLibDir || env.oracleClientLibDir),
     )
 
     let status = this.status

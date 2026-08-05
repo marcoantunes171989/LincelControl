@@ -19,6 +19,7 @@ export function useOracleIntegration() {
   const [error, setError] = useState<string | null>(null)
   const [showPassword, setShowPassword] = useState(false)
   const [apiReachable, setApiReachable] = useState<boolean | null>(null)
+  const [showAdvanced, setShowAdvanced] = useState(false)
 
   const refreshStatus = useCallback(async () => {
     try {
@@ -56,7 +57,7 @@ export function useOracleIntegration() {
         }))
       }
     } catch {
-      // Configuração pode falhar se a API estiver offline; o status abaixo define o aviso.
+      /* API offline */
     }
     await refreshStatus()
   }, [refreshStatus])
@@ -76,163 +77,102 @@ export function useOracleIntegration() {
       tnsAlias: form.tnsAlias.trim(),
       oracleClientLibDir: form.oracleClientLibDir.trim(),
       expectedHost: form.expectedHost.trim(),
-      expectedPort: Number.parseInt(form.expectedPort, 10) || 1521,
+      expectedPort: form.expectedPort ? Number.parseInt(form.expectedPort, 10) || null : null,
       expectedDatabase: form.expectedDatabase.trim(),
       username: form.username.trim(),
     }),
     [form],
   )
 
-  const saveConfiguration = useCallback(async () => {
-    setBusy(true)
-    setError(null)
-    setProgress('Salvando configuração...')
-    try {
-      await oracleApi.saveConfiguration(toPayload())
-      await refreshStatus()
-      setProgress(null)
-      return true
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Falha ao salvar configuração')
-      setProgress(null)
-      return false
-    } finally {
-      setBusy(false)
-    }
-  }, [refreshStatus, toPayload])
-
-  const validateClient = useCallback(async () => {
-    setBusy(true)
-    setError(null)
-    setProgress('1. Validando Oracle Client...')
-    try {
-      const result = await oracleApi.validateClient(form.oracleClientLibDir, form.tnsAdminPath || undefined)
-      await refreshStatus()
-      if (!result.ok) throw new Error(result.message)
-      setProgress(null)
-      return result
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Falha ao validar Oracle Client')
-      setProgress(null)
-      throw err
-    } finally {
-      setBusy(false)
-    }
-  }, [form.oracleClientLibDir, form.tnsAdminPath, refreshStatus])
-
   const loadAliases = useCallback(async () => {
+    if (!form.tnsAdminPath.trim()) {
+      setError('Informe o caminho do TNS_ADMIN nas opções avançadas para listar os aliases.')
+      setShowAdvanced(true)
+      return []
+    }
     setBusy(true)
     setError(null)
-    setProgress('2. Localizando tnsnames.ora...')
     try {
       const result = await oracleApi.listAliases(form.tnsAdminPath, form.tnsFileName || 'tnsnames.ora')
       setAliases(result.aliases)
-      setProgress(null)
       return result.aliases
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Falha ao ler aliases TNS')
-      setProgress(null)
       throw err
     } finally {
       setBusy(false)
     }
   }, [form.tnsAdminPath, form.tnsFileName])
 
-  const selectAlias = useCallback(
-    async (alias: string) => {
-      updateField('tnsAlias', alias)
-      setBusy(true)
-      setError(null)
-      setProgress('3. Analisando alias...')
-      try {
-        const result = await oracleApi.parseAlias(form.tnsAdminPath, form.tnsFileName || 'tnsnames.ora', alias)
-        setSelectedAliasInfo(result.alias)
-        updateField('expectedHost', result.alias.hosts[0] || '')
-        updateField('expectedPort', result.alias.ports[0] ? String(result.alias.ports[0]) : '1521')
-        updateField('expectedDatabase', result.alias.serviceName || result.alias.sid || '')
-        setProgress(null)
-        return result.alias
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Falha ao analisar alias')
-        setProgress(null)
-        throw err
-      } finally {
-        setBusy(false)
-      }
-    },
-    [form.tnsAdminPath, form.tnsFileName, updateField],
-  )
+  /** Conectar como no PL/SQL Developer: Username + Password + Database (TNS). */
+  const logon = useCallback(async (): Promise<boolean> => {
+    if (!form.username.trim() || !form.tnsAlias.trim()) {
+      setError('Informe Username e Database (alias TNS).')
+      return false
+    }
+    if (!form.password && !status?.passwordAvailableInMemory) {
+      setError('Informe a Password.')
+      return false
+    }
 
-  const runValidation = useCallback(async () => {
     setBusy(true)
     setError(null)
+    setProgress('Conectando ao Oracle...')
     try {
-      setProgress('Salvando configuração...')
       await oracleApi.saveConfiguration(toPayload())
-
-      setProgress('1. Validando Oracle Client...')
-      setProgress('2. Localizando tnsnames.ora...')
-      setProgress('3. Analisando alias...')
-      setProgress('4. Validando IP e porta...')
-      setProgress('5. Testando comunicação...')
-      setProgress('6. Validando credenciais...')
-      setProgress('7. Executando consulta...')
-
-      const result = await oracleApi.validate(form.password || undefined)
-      setStages(result.stages)
+      const result = await oracleApi.connect(form.password || undefined, {
+        username: form.username.trim(),
+        tnsAlias: form.tnsAlias.trim(),
+      })
       setStatus(result.status)
-      setSelectedAliasInfo(result.alias)
+      setStages(result.status.stages ?? [])
+      setForm((current) => ({ ...current, password: '' }))
       setProgress(null)
-      if (!result.ok) {
-        const failed = [...result.stages].reverse().find((stage) => !stage.ok && stage.status === 'error')
-        throw new Error(failed?.message || result.message || 'Validação falhou')
-      }
-      return result
+      return true
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Falha na validação')
+      setError(err instanceof Error ? err.message : 'Falha no logon Oracle')
       setProgress(null)
       await refreshStatus()
-      throw err
+      return false
     } finally {
       setBusy(false)
     }
-  }, [form.password, refreshStatus, toPayload])
+  }, [form.password, form.tnsAlias, form.username, refreshStatus, status?.passwordAvailableInMemory, toPayload])
 
-  const toggleConnection = useCallback(
-    async (enabled: boolean): Promise<boolean> => {
-      setBusy(true)
-      setError(null)
-      try {
-        await oracleApi.saveConfiguration(toPayload())
-        if (enabled) {
-          setProgress('Conectando ao Oracle...')
-          if (!form.password && !status?.passwordAvailableInMemory) {
-            setError('Informe a senha Oracle para conectar.')
-            setProgress(null)
-            return false
-          }
-          const result = await oracleApi.toggle(true, form.password || undefined)
-          setStatus(result.status)
-          setStages(result.status.stages ?? [])
-        } else {
-          setProgress('Desconectando...')
-          const result = await oracleApi.toggle(false)
-          setStatus(result.status)
-          setStages(result.status.stages ?? [])
-        }
-        setProgress(null)
-        return true
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Falha ao alternar conexão')
-        setProgress(null)
-        await refreshStatus()
-        return false
-      } finally {
-        setBusy(false)
-      }
-    },
-    [form.password, refreshStatus, status?.passwordAvailableInMemory, toPayload],
-  )
+  const logoff = useCallback(async (): Promise<boolean> => {
+    setBusy(true)
+    setError(null)
+    setProgress('Desconectando...')
+    try {
+      const result = await oracleApi.disconnect()
+      setStatus(result.status)
+      setStages(result.status.stages ?? [])
+      setProgress(null)
+      return true
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Falha ao desconectar')
+      setProgress(null)
+      await refreshStatus()
+      return false
+    } finally {
+      setBusy(false)
+    }
+  }, [refreshStatus])
+
+  const saveAdvanced = useCallback(async () => {
+    setBusy(true)
+    setError(null)
+    try {
+      await oracleApi.saveConfiguration(toPayload())
+      await refreshStatus()
+      return true
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Falha ao salvar ambiente')
+      return false
+    } finally {
+      setBusy(false)
+    }
+  }, [refreshStatus, toPayload])
 
   return {
     form,
@@ -244,16 +184,17 @@ export function useOracleIntegration() {
     busy,
     error,
     showPassword,
+    showAdvanced,
     apiReachable,
     setShowPassword,
+    setShowAdvanced,
     setError,
     updateField,
     refreshStatus,
-    saveConfiguration,
-    validateClient,
     loadAliases,
-    selectAlias,
-    runValidation,
-    toggleConnection,
+    logon,
+    logoff,
+    saveAdvanced,
+    setSelectedAliasInfo,
   }
 }

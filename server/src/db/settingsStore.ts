@@ -7,7 +7,6 @@ import { logger } from '../utils/logger.js'
 /**
  * Persistência da configuração Oracle (sem senha).
  * Estrutura equivalente à tabela oracle_connection_settings.
- * Usa JSON em disco para evitar dependências nativas (better-sqlite3/node-gyp).
  */
 interface SettingsFile {
   oracle_connection_settings: OracleConnectionSettings | null
@@ -53,13 +52,21 @@ export function saveOracleSettings(input: OracleConfigurationInput): OracleConne
 
   const saved: OracleConnectionSettings = {
     id: 1,
-    tnsAdminPath: input.tnsAdminPath.trim(),
-    tnsFileName: (input.tnsFileName ?? 'tnsnames.ora').trim() || 'tnsnames.ora',
+    tnsAdminPath: (input.tnsAdminPath ?? existing?.tnsAdminPath ?? env.oracleTnsAdmin).trim(),
+    tnsFileName:
+      (input.tnsFileName ?? existing?.tnsFileName ?? env.oracleTnsFileName).trim() || 'tnsnames.ora',
     tnsAlias: input.tnsAlias.trim(),
-    oracleClientLibDir: input.oracleClientLibDir.trim(),
-    expectedHost: input.expectedHost.trim(),
-    expectedPort: input.expectedPort,
-    expectedDatabase: input.expectedDatabase.trim(),
+    oracleClientLibDir: (
+      input.oracleClientLibDir ??
+      existing?.oracleClientLibDir ??
+      env.oracleClientLibDir
+    ).trim(),
+    expectedHost: (input.expectedHost ?? existing?.expectedHost ?? '').trim(),
+    expectedPort:
+      input.expectedPort === undefined
+        ? (existing?.expectedPort ?? null)
+        : input.expectedPort,
+    expectedDatabase: (input.expectedDatabase ?? existing?.expectedDatabase ?? '').trim(),
     username: input.username.trim(),
     isEnabled: input.isEnabled === undefined ? Boolean(existing?.isEnabled) : Boolean(input.isEnabled),
     lastValidationStatus: existing?.lastValidationStatus ?? null,

@@ -99,12 +99,17 @@ export const oracleApi = {
   validate: (password?: string) =>
     request<OracleValidateResponse>('/api/oracle/validate', {
       method: 'POST',
-      body: JSON.stringify(password ? { password } : {}),
+      body: JSON.stringify(password ? { password, mode: 'simple' } : { mode: 'simple' }),
     }),
-  connect: (password?: string) =>
+  connect: (password?: string, identity?: { username?: string; tnsAlias?: string }) =>
     request<{ ok: boolean; status: OracleRuntimeStatus }>('/api/oracle/connect', {
       method: 'POST',
-      body: JSON.stringify(password ? { password } : {}),
+      body: JSON.stringify({
+        mode: 'simple',
+        ...(password ? { password } : {}),
+        ...(identity?.username ? { username: identity.username } : {}),
+        ...(identity?.tnsAlias ? { tnsAlias: identity.tnsAlias } : {}),
+      }),
     }),
   disconnect: () =>
     request<{ ok: boolean; status: OracleRuntimeStatus }>('/api/oracle/disconnect', {
@@ -114,7 +119,7 @@ export const oracleApi = {
   toggle: (enabled: boolean, password?: string) =>
     request<{ ok: boolean; status: OracleRuntimeStatus }>('/api/oracle/toggle', {
       method: 'POST',
-      body: JSON.stringify(enabled ? { enabled: true, password } : { enabled: false }),
+      body: JSON.stringify(enabled ? { enabled: true, password, mode: 'simple' } : { enabled: false }),
     }),
   query: (queryId: string, binds?: Record<string, unknown>) =>
     request<{ ok: boolean; rows: Record<string, unknown>[]; durationMs: number }>('/api/oracle/query', {

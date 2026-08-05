@@ -37,13 +37,13 @@ export interface TnsAliasInfo {
 
 export interface OracleConfigurationPayload {
   id?: number
-  tnsAdminPath: string
-  tnsFileName: string
+  tnsAdminPath?: string
+  tnsFileName?: string
   tnsAlias: string
-  oracleClientLibDir: string
-  expectedHost: string
-  expectedPort: number | null
-  expectedDatabase: string
+  oracleClientLibDir?: string
+  expectedHost?: string
+  expectedPort?: number | null
+  expectedDatabase?: string
   username: string
   isEnabled?: boolean
   lastValidationStatus?: string | null
