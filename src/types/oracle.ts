@@ -122,7 +122,9 @@ export const EMPTY_ORACLE_FORM: OracleFormState = {
 }
 
 export const DIAGNOSTIC_STEPS = [
-  { stage: 'oracle-client', label: 'Oracle Client' },
+  { stage: 'oracle-driver', label: 'Driver Thin' },
+  { stage: 'oracle-client', label: 'Driver Oracle' },
+  { stage: 'connect-string', label: 'Connect string' },
   { stage: 'tns-file', label: 'Arquivo TNS' },
   { stage: 'tns-alias', label: 'Alias' },
   { stage: 'tns-comparison', label: 'HOST/IP' },

@@ -7,15 +7,12 @@ import {
   Eye,
   EyeOff,
   FileUp,
-  FolderSearch,
-  HardDrive,
   Loader2,
   LogIn,
   LogOut,
   RefreshCw,
   Settings2,
   ShieldAlert,
-  XCircle,
 } from 'lucide-react'
 import { StatusBadge } from '../StatusBadge'
 import { DiagnosticStepList } from './DiagnosticStepList'
@@ -72,7 +69,6 @@ export function OracleIntegrationPage({ onToast }: OracleIntegrationPageProps) {
     showPassword,
     showAdvanced,
     apiReachable,
-    clientValidation,
     tnsImported,
     tnsFileLabel,
     setShowPassword,
@@ -81,7 +77,6 @@ export function OracleIntegrationPage({ onToast }: OracleIntegrationPageProps) {
     selectAlias,
     refreshStatus,
     importTnsFile,
-    validateClientPath,
     logon,
     logoff,
     saveAdvanced,
@@ -91,12 +86,12 @@ export function OracleIntegrationPage({ onToast }: OracleIntegrationPageProps) {
     status?.status && status.status in STATUS_LABELS ? status.status : 'not_configured'
   const connected = Boolean(status?.connected)
   const canConnect =
-    Boolean(form.oracleClientLibDir.trim()) &&
     Boolean(form.username.trim()) &&
     Boolean(form.tnsAlias.trim()) &&
+    Boolean(form.expectedHost.trim()) &&
+    Boolean(form.expectedDatabase.trim()) &&
     (tnsImported || Boolean(form.tnsAdminPath.trim())) &&
-    (Boolean(form.password) || Boolean(status?.passwordAvailableInMemory)) &&
-    apiReachable !== false
+    (Boolean(form.password) || Boolean(status?.passwordAvailableInMemory))
 
   const handleLogon = async () => {
     const ok = await logon()
@@ -108,11 +103,6 @@ export function OracleIntegrationPage({ onToast }: OracleIntegrationPageProps) {
     if (ok) onToast?.('Desconectado. Configuração preservada.')
   }
 
-  const handleValidateClient = async () => {
-    const result = await validateClientPath()
-    onToast?.(result.ok ? 'Oracle Client validado com sucesso.' : result.message)
-  }
-
   const handleImportTns = async (files: FileList | null) => {
     if (!files?.length) return
     const file = files[0]
@@ -120,28 +110,10 @@ export function OracleIntegrationPage({ onToast }: OracleIntegrationPageProps) {
     if (ok) {
       onToast?.(
         apiReachable === false
-          ? `TNS lido: ${file.name}. Selecione o Database. Para conectar, use a API local.`
+          ? `TNS lido: ${file.name}. Selecione o Database e clique em OK (com API local).`
           : `TNS importado: ${file.name}. Selecione o Database e clique em OK.`,
       )
     }
-  }
-
-  /**
-   * O navegador não expõe o caminho absoluto por segurança.
-   * Se o usuário selecionar oci.dll, usamos o nome para orientar
-   * e pedimos o caminho completo da pasta no campo ao lado.
-   */
-  const handlePickOciHint = (files: FileList | null) => {
-    if (!files?.length) return
-    const file = files[0]
-    const name = file.name.toLowerCase()
-    if (name !== 'oci.dll' && name !== 'libclntsh.so' && !name.includes('oci')) {
-      onToast?.('Selecione o arquivo OCI.DLL dentro da pasta do Instant Client.')
-      return
-    }
-    onToast?.(
-      'Arquivo OCI.DLL reconhecido. Informe ao lado o caminho completo da pasta do Client (ex.: C:\\Oracle\\instantclient_19_25) e clique em Validar.',
-    )
   }
 
   return (
@@ -154,8 +126,8 @@ export function OracleIntegrationPage({ onToast }: OracleIntegrationPageProps) {
               Integração Oracle
             </h2>
             <p className="mt-1 max-w-3xl text-sm text-slate-500">
-              Importe o <code className="font-mono">tnsnames.ora</code>, valide o Oracle Client e conecte com Username,
-              Password e o alias Database.
+              Modo Thin: sem Instant Client / OCI.DLL. Importe o TNS, informe Username/Password e conecte pelo
+              HOST:PORT/SERVICE para consultar o banco e montar dashboards.
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
@@ -176,11 +148,10 @@ export function OracleIntegrationPage({ onToast }: OracleIntegrationPageProps) {
           <div className="mt-4 flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
             <ShieldAlert size={16} className="mt-0.5 shrink-0" aria-hidden="true" />
             <span>
-              A API Oracle local não está disponível (Validar Client / conexão precisam dela). Você já pode{' '}
-              <strong>importar o tnsnames.ora</strong> neste navegador. Para validar a OCI.DLL e conectar, no Windows
-              com Oracle Client rode{' '}
-              <code className="font-mono">npm run dev:server</code> e abra{' '}
-              <code className="font-mono">http://localhost:5173</code>.
+              A conexão ao banco passa pela API Node local (sem OCI.DLL). Rode{' '}
+              <code className="font-mono">npm run dev:server</code> e{' '}
+              <code className="font-mono">npm run dev</code>, depois abra{' '}
+              <code className="font-mono">http://localhost:5173</code>. Na Vercel só o frontend sobe.
             </span>
           </div>
         )}
@@ -206,7 +177,7 @@ export function OracleIntegrationPage({ onToast }: OracleIntegrationPageProps) {
           </div>
           <div>
             <h3 className="text-base font-semibold text-slate-900">Oracle Logon</h3>
-            <p className="text-sm text-slate-500">Client → Importar TNS → Username / Password</p>
+            <p className="text-sm text-slate-500">Importar TNS → Username / Password → OK</p>
           </div>
         </div>
 
@@ -225,8 +196,8 @@ export function OracleIntegrationPage({ onToast }: OracleIntegrationPageProps) {
               Arquivo TNS
             </div>
             <p className="text-xs text-slate-500">
-              Selecione o <code className="font-mono">tnsnames.ora</code> no navegador. O conteúdo é enviado à API,
-              que grava o arquivo e lista os aliases em Database.
+              Importe o <code className="font-mono">tnsnames.ora</code> para obter HOST, PORT e SERVICE_NAME usados na
+              conexão Thin.
             </p>
             <div className="mt-3 flex flex-wrap items-center gap-2">
               <button
@@ -259,88 +230,6 @@ export function OracleIntegrationPage({ onToast }: OracleIntegrationPageProps) {
                 <span className="text-xs text-slate-500">Nenhum arquivo importado</span>
               )}
             </div>
-          </div>
-
-          {/* Oracle Client path — validado via API */}
-          <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-3">
-            <div className="mb-2 flex items-center gap-2 text-sm font-semibold text-slate-800">
-              <HardDrive size={16} className="text-blue-600" aria-hidden="true" />
-              Oracle Client
-            </div>
-            <label htmlFor="oracleClientLibDir" className="text-sm font-medium text-slate-700">
-              Caminho da pasta do Client
-              <span className="text-red-600"> *</span>
-            </label>
-            <div className="mt-1.5 flex flex-col gap-2 sm:flex-row">
-              <input
-                id="oracleClientLibDir"
-                value={form.oracleClientLibDir}
-                disabled={busy || connected}
-                placeholder="C:\Oracle\instantclient_19_25"
-                onChange={(event) => updateField('oracleClientLibDir', event.target.value)}
-                className="min-h-11 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 font-mono text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 disabled:bg-slate-100"
-              />
-              <label className="inline-flex min-h-11 cursor-pointer items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-3 text-sm font-medium text-slate-700 transition hover:bg-slate-50">
-                <FolderSearch size={16} aria-hidden="true" />
-                OCI.DLL
-                <input
-                  type="file"
-                  accept=".dll,.so,oci.dll"
-                  className="sr-only"
-                  disabled={busy || connected}
-                  onChange={(event) => {
-                    handlePickOciHint(event.target.files)
-                    event.target.value = ''
-                  }}
-                />
-              </label>
-            </div>
-            <p className="mt-1.5 text-xs text-slate-500">
-              Cole o caminho da pasta (não do arquivo). O navegador envia esse caminho à API, que verifica se existe{' '}
-              <code className="font-mono">OCI.DLL</code>.
-            </p>
-
-            <div className="mt-3 flex flex-wrap items-center gap-2">
-              <button
-                type="button"
-                disabled={busy || connected || !form.oracleClientLibDir.trim()}
-                onClick={() => void handleValidateClient()}
-                className="inline-flex min-h-11 items-center gap-2 rounded-lg bg-slate-800 px-3 text-sm font-semibold text-white transition hover:bg-slate-900 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400"
-              >
-                Validar Client
-              </button>
-              {clientValidation && (
-                <span
-                  className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold ${
-                    clientValidation.ok
-                      ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
-                      : 'border-red-200 bg-red-50 text-red-700'
-                  }`}
-                >
-                  {clientValidation.ok ? <CheckCircle2 size={13} /> : <XCircle size={13} />}
-                  {clientValidation.ociDllFound ? 'OCI.DLL encontrada' : clientValidation.message}
-                </span>
-              )}
-              {!clientValidation && status?.ociDllFound != null && (
-                <span
-                  className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold ${
-                    status.ociDllFound
-                      ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
-                      : 'border-amber-200 bg-amber-50 text-amber-700'
-                  }`}
-                >
-                  {status.ociDllFound ? <CheckCircle2 size={13} /> : <XCircle size={13} />}
-                  {status.ociDllFound ? 'OCI.DLL OK' : 'OCI.DLL não confirmada'}
-                  {status.clientVersion ? ` · ${status.clientVersion}` : ''}
-                </span>
-              )}
-            </div>
-            {clientValidation?.ok && (
-              <p className="mt-2 text-xs text-emerald-700">
-                {clientValidation.message}
-                {clientValidation.clientVersion ? ` Versão: ${clientValidation.clientVersion}.` : ''}
-              </p>
-            )}
           </div>
 
           <SettingsInput
@@ -492,10 +381,8 @@ export function OracleIntegrationPage({ onToast }: OracleIntegrationPageProps) {
         <h3 className="text-base font-semibold text-slate-900">Sessão</h3>
         <dl className="mt-3 grid grid-cols-1 gap-2 text-sm sm:grid-cols-2 lg:grid-cols-4">
           <div className="rounded-lg bg-slate-50 px-3 py-2">
-            <dt className="text-xs text-slate-500">Client</dt>
-            <dd className="truncate font-mono text-xs font-medium text-slate-800" title={form.oracleClientLibDir}>
-              {form.oracleClientLibDir || '—'}
-            </dd>
+            <dt className="text-xs text-slate-500">Modo</dt>
+            <dd className="font-medium text-slate-800">Thin (sem OCI.DLL)</dd>
           </div>
           <div className="rounded-lg bg-slate-50 px-3 py-2">
             <dt className="text-xs text-slate-500">Database</dt>
@@ -508,6 +395,14 @@ export function OracleIntegrationPage({ onToast }: OracleIntegrationPageProps) {
           <div className="rounded-lg bg-slate-50 px-3 py-2">
             <dt className="text-xs text-slate-500">Última conexão</dt>
             <dd className="font-medium text-slate-800">{formatDate(status?.lastConnectedAt)}</dd>
+          </div>
+          <div className="rounded-lg bg-slate-50 px-3 py-2 sm:col-span-2">
+            <dt className="text-xs text-slate-500">Connect string</dt>
+            <dd className="font-mono text-xs font-medium text-slate-800">
+              {form.expectedHost && form.expectedDatabase
+                ? `${form.expectedHost}:${form.expectedPort || '1521'}/${form.expectedDatabase}`
+                : '—'}
+            </dd>
           </div>
         </dl>
       </section>
@@ -562,7 +457,7 @@ export function OracleIntegrationPage({ onToast }: OracleIntegrationPageProps) {
 
       <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
         <h3 className="text-base font-semibold text-slate-900">Diagnóstico</h3>
-        <p className="mt-1 text-sm text-slate-500">Inclui a etapa de validação do Oracle Client.</p>
+        <p className="mt-1 text-sm text-slate-500">Etapas do logon Thin (driver, TNS, autenticação, DUAL).</p>
         <div className="mt-4">
           <DiagnosticStepList stages={stages} running={busy} />
         </div>

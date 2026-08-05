@@ -13,6 +13,8 @@ export type OracleConnectionStatus =
 
 export type ValidationStage =
   | 'oracle-client'
+  | 'oracle-driver'
+  | 'connect-string'
   | 'tns-file'
   | 'tns-alias'
   | 'tns-comparison'

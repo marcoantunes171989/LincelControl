@@ -11,7 +11,8 @@ import { resolveHost } from '../utils/dns.js'
 import { logger } from '../utils/logger.js'
 import { testTcpConnection } from '../utils/tcp.js'
 import { runTnsPing } from '../utils/tnsping.js'
-import { getOracleClientState, getOracledb, initializeOracleClient } from './client.js'
+import { ensureThinDriver, getOracleClientState, getOracledb } from './client.js'
+import { buildConnectString } from './connectString.js'
 import { compareTnsWithExpected } from './comparison.js'
 import { translateOracleError } from './errors.js'
 import { getCatalogQuery, sanitizeBinds } from './queryCatalog.js'
@@ -51,16 +52,9 @@ class OracleIntegrationService {
 
       this.status = settings.isEnabled ? 'password_required' : 'disconnected'
 
-      if (settings.oracleClientLibDir) {
-        const client = initializeOracleClient(settings.oracleClientLibDir, settings.tnsAdminPath)
-        this.clientVersion = client.clientVersion
-        this.ociDllFound = client.ociDllFound
-        if (!client.ok) {
-          this.status = 'oracle_client_unavailable'
-          this.lastError = client.message
-          logger.warn('Oracle Client indisponível no bootstrap', { message: client.message })
-        }
-      }
+      const driver = ensureThinDriver()
+      this.clientVersion = driver.clientVersion
+      this.ociDllFound = false
 
       logger.info('Bootstrap Oracle concluído sem conexão automática', {
         configured: true,
@@ -241,31 +235,25 @@ class OracleIntegrationService {
       const libDir = settings.oracleClientLibDir || env.oracleClientLibDir
       const tnsAdmin = settings.tnsAdminPath || env.oracleTnsAdmin
 
-      // 1. Oracle Client
+      // 1. Driver Thin (sem Instant Client / OCI.DLL)
       const clientStarted = Date.now()
-      const client = initializeOracleClient(libDir, tnsAdmin || undefined)
+      const client = ensureThinDriver()
       this.clientVersion = client.clientVersion
-      this.ociDllFound = client.ociDllFound
+      this.ociDllFound = false
       this.pushStage({
-        stage: 'oracle-client',
-        ok: client.ok,
-        status: client.ok ? 'success' : 'error',
+        stage: 'oracle-driver',
+        ok: true,
+        status: 'success',
         message: client.message,
         durationMs: Date.now() - clientStarted,
         details: {
-          libDir: client.libDir,
-          ociDllFound: client.ociDllFound,
+          mode: 'thin',
           architecture: client.architecture,
           clientVersion: client.clientVersion,
         },
       })
-      if (!client.ok) {
-        this.status = 'oracle_client_unavailable'
-        this.lastError = client.message
-        return { ok: false, stages: this.stages, alias: null }
-      }
 
-      // 2–3. TNS / alias (opcional no modo simple — o Client resolve o alias)
+      // 2–3. TNS / alias — preferimos HOST:PORT/SERVICE do arquivo importado
       let aliasInfo: TnsAliasInfo | null = null
       if (tnsAdmin) {
         const tnsStarted = Date.now()
@@ -475,12 +463,29 @@ class OracleIntegrationService {
       // Autenticação + DUAL (equivalente ao OK do PL/SQL Developer)
       const authStarted = Date.now()
       const oracledb = getOracledb()
+      const connectString = buildConnectString(
+        {
+          host: latest.expectedHost,
+          port: latest.expectedPort,
+          serviceName: aliasInfo?.serviceName || (!aliasInfo?.sid ? latest.expectedDatabase : null),
+          sid: aliasInfo?.sid && !aliasInfo.serviceName ? aliasInfo.sid : null,
+          tnsAlias: latest.tnsAlias,
+        },
+        aliasInfo,
+      )
+      this.pushStage({
+        stage: 'connect-string',
+        ok: true,
+        status: 'success',
+        message: `Connect string Thin: ${connectString}`,
+        details: { connectString },
+      })
       let connection: Connection | null = null
       try {
         connection = await oracledb.getConnection({
           user: latest.username,
           password: this.passwordInMemory,
-          connectString: latest.tnsAlias,
+          connectString,
         })
 
         const dual = await connection.execute<{ RESULTADO: number }>(
@@ -643,11 +648,24 @@ class OracleIntegrationService {
           })
         }
       } catch {
+        const connectString = buildConnectString(
+          {
+            host: settings.expectedHost,
+            port: settings.expectedPort,
+            serviceName:
+              this.parsedAlias?.serviceName ||
+              (!this.parsedAlias?.sid ? settings.expectedDatabase : null),
+            sid:
+              this.parsedAlias?.sid && !this.parsedAlias.serviceName ? this.parsedAlias.sid : null,
+            tnsAlias: settings.tnsAlias,
+          },
+          this.parsedAlias,
+        )
         await oracledb.createPool({
           poolAlias: POOL_ALIAS,
           user: settings.username,
           password: this.passwordInMemory,
-          connectString: settings.tnsAlias,
+          connectString,
           poolMin: env.oraclePoolMin,
           poolMax: env.oraclePoolMax,
           poolIncrement: env.oraclePoolIncrement,
@@ -835,7 +853,7 @@ class OracleIntegrationService {
     const configured = Boolean(
       settings?.tnsAlias &&
         settings.username &&
-        (settings.oracleClientLibDir || env.oracleClientLibDir),
+        (settings.expectedHost || settings.tnsAdminPath || env.oracleTnsAdmin),
     )
 
     let status = this.status
@@ -906,7 +924,7 @@ class OracleIntegrationService {
 
 export const oracleService = new OracleIntegrationService()
 
-export const initializeOracleClientSingleton = initializeOracleClient
+export const initializeOracleClientSingleton = ensureThinDriver
 export const validateOracleConfiguration = (options?: { password?: string; includeAuth?: boolean; actor?: string }) =>
   oracleService.validateConfiguration(options)
 export const validateOracleCredentials = (password?: string, actor?: string) =>

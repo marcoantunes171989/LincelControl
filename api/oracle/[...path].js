@@ -5,7 +5,7 @@
  */
 
 const LOCAL_API_HINT =
-  'API Oracle não roda na Vercel. Execute localmente: npm run dev:server (porta 8787) e abra o app em http://localhost:5173.'
+  'API Oracle não roda na Vercel. Modo Thin (sem OCI.DLL): execute npm run dev:server + npm run dev e abra http://localhost:5173.'
 
 function stubStatus() {
   return {

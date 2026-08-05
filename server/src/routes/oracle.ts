@@ -28,6 +28,9 @@ const connectSchema = z.object({
   oracleClientLibDir: z.string().optional(),
   tnsAdminPath: z.string().optional(),
   tnsFileName: z.string().optional(),
+  expectedHost: z.string().optional(),
+  expectedPort: z.coerce.number().int().min(1).max(65535).optional().nullable(),
+  expectedDatabase: z.string().optional(),
   mode: z.enum(['simple', 'full']).optional().default('simple'),
 })
 
@@ -39,6 +42,9 @@ const toggleSchema = z.object({
   oracleClientLibDir: z.string().optional(),
   tnsAdminPath: z.string().optional(),
   tnsFileName: z.string().optional(),
+  expectedHost: z.string().optional(),
+  expectedPort: z.coerce.number().int().min(1).max(65535).optional().nullable(),
+  expectedDatabase: z.string().optional(),
   mode: z.enum(['simple', 'full']).optional().default('simple'),
 })
 
@@ -167,15 +173,14 @@ oracleRouter.post(
   '/validate-client',
   requirePermission('oracle.validate'),
   validationRateLimit,
-  (req, res, next) => {
+  (_req, res, next) => {
     try {
-      const schema = z.object({
-        oracleClientLibDir: z.string().min(1),
-        tnsAdminPath: z.string().optional(),
+      // Compat: Instant Client / OCI.DLL não são mais necessários (modo Thin).
+      const result = initializeOracleClient()
+      res.status(200).json({
+        ...result,
+        message: 'Modo Thin ativo — OCI.DLL não é necessária. Use Username, Password e TNS (HOST/PORT/SERVICE).',
       })
-      const body = schema.parse(req.body)
-      const result = initializeOracleClient(body.oracleClientLibDir, body.tnsAdminPath)
-      res.status(result.ok ? 200 : 400).json(result)
     } catch (error) {
       next(error)
     }
@@ -188,13 +193,18 @@ function applyLogonIdentity(body: {
   oracleClientLibDir?: string
   tnsAdminPath?: string
   tnsFileName?: string
+  expectedHost?: string
+  expectedPort?: number | null
+  expectedDatabase?: string
 }) {
   const current = oracleService.getSettings()
   const hasIdentity =
     body.username ||
     body.tnsAlias ||
     body.oracleClientLibDir !== undefined ||
-    body.tnsAdminPath !== undefined
+    body.tnsAdminPath !== undefined ||
+    body.expectedHost !== undefined ||
+    body.expectedDatabase !== undefined
   if (!hasIdentity) return
 
   oracleService.saveConfiguration({
@@ -202,10 +212,11 @@ function applyLogonIdentity(body: {
     tnsFileName: body.tnsFileName || current?.tnsFileName,
     tnsAlias: body.tnsAlias || current?.tnsAlias || '',
     oracleClientLibDir:
-      body.oracleClientLibDir !== undefined ? body.oracleClientLibDir : current?.oracleClientLibDir,
-    expectedHost: current?.expectedHost,
-    expectedPort: current?.expectedPort,
-    expectedDatabase: current?.expectedDatabase,
+      body.oracleClientLibDir !== undefined ? body.oracleClientLibDir : current?.oracleClientLibDir || '',
+    expectedHost: body.expectedHost !== undefined ? body.expectedHost : current?.expectedHost,
+    expectedPort: body.expectedPort !== undefined ? body.expectedPort : current?.expectedPort,
+    expectedDatabase:
+      body.expectedDatabase !== undefined ? body.expectedDatabase : current?.expectedDatabase,
     username: body.username || current?.username || '',
   })
 }

@@ -142,6 +142,9 @@ export const oracleApi = {
       oracleClientLibDir?: string
       tnsAdminPath?: string
       tnsFileName?: string
+      expectedHost?: string
+      expectedPort?: number | null
+      expectedDatabase?: string
     },
   ) =>
     request<{ ok: boolean; status: OracleRuntimeStatus }>('/api/oracle/connect', {
@@ -156,6 +159,9 @@ export const oracleApi = {
           : {}),
         ...(identity?.tnsAdminPath !== undefined ? { tnsAdminPath: identity.tnsAdminPath } : {}),
         ...(identity?.tnsFileName ? { tnsFileName: identity.tnsFileName } : {}),
+        ...(identity?.expectedHost ? { expectedHost: identity.expectedHost } : {}),
+        ...(identity?.expectedPort != null ? { expectedPort: identity.expectedPort } : {}),
+        ...(identity?.expectedDatabase ? { expectedDatabase: identity.expectedDatabase } : {}),
       }),
     }),
   disconnect: () =>
