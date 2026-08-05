@@ -314,7 +314,9 @@ function App() {
           />
         </>
       ) : (
-        <OracleIntegrationPage onToast={setToastMessage} />
+        <main className="mx-auto max-w-[1600px] px-3 py-5 sm:px-6 sm:py-6 lg:px-8">
+          <OracleIntegrationPage onToast={setToastMessage} />
+        </main>
       )}
 
       <Toast message={toastMessage} />

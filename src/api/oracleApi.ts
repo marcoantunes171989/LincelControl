@@ -11,27 +11,66 @@ function getApiKey(): string {
   return (import.meta.env.VITE_ADMIN_API_KEY as string | undefined) || ''
 }
 
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const headers = new Headers(init?.headers)
-  headers.set('Content-Type', 'application/json')
+  if (!headers.has('Content-Type') && init?.body) {
+    headers.set('Content-Type', 'application/json')
+  }
   const apiKey = getApiKey()
   if (apiKey) headers.set('X-Admin-Api-Key', apiKey)
   headers.set('X-Actor', 'licencontrol-ui')
 
-  const response = await fetch(`${API_BASE}${path}`, {
-    ...init,
-    headers,
-  })
-
-  const data = (await response.json().catch(() => ({}))) as T & { message?: string; ok?: boolean }
-  if (!response.ok) {
-    throw new Error(data.message || `Falha na API (${response.status})`)
+  let response: Response
+  try {
+    response = await fetch(`${API_BASE}${path}`, {
+      ...init,
+      headers,
+    })
+  } catch {
+    throw new Error('API interna indisponível. Execute npm run dev:server na porta 8787.')
   }
-  return data
+
+  const contentType = response.headers.get('content-type') || ''
+  const raw = await response.text()
+
+  // Na Vercel, /api/* pode cair no rewrite do SPA e devolver HTML 200.
+  if (contentType.includes('text/html') || raw.trimStart().startsWith('<!')) {
+    throw new Error('API Oracle não disponível neste host. Use a API interna (npm run dev:server).')
+  }
+
+  let data: unknown = {}
+  if (raw) {
+    try {
+      data = JSON.parse(raw)
+    } catch {
+      throw new Error(`Resposta inválida da API (${response.status}).`)
+    }
+  }
+
+  if (!response.ok) {
+    const message =
+      isPlainObject(data) && typeof data.message === 'string'
+        ? data.message
+        : `Falha na API (${response.status})`
+    throw new Error(message)
+  }
+
+  return data as T
+}
+
+function assertRuntimeStatus(data: unknown): OracleRuntimeStatus {
+  if (!isPlainObject(data) || typeof data.status !== 'string') {
+    throw new Error('API Oracle não disponível neste host. Use a API interna (npm run dev:server).')
+  }
+  return data as unknown as OracleRuntimeStatus
 }
 
 export const oracleApi = {
-  getStatus: () => request<OracleRuntimeStatus>('/api/oracle/status'),
+  getStatus: async () => assertRuntimeStatus(await request<unknown>('/api/oracle/status')),
   getConfiguration: () =>
     request<{ ok: boolean; configuration: OracleConfigurationPayload | null }>('/api/oracle/configuration'),
   saveConfiguration: (payload: OracleConfigurationPayload) =>

@@ -6,12 +6,6 @@ interface DiagnosticStepListProps {
   running?: boolean
 }
 
-function toneFor(stageKey: string, stages: StageResult[], running?: boolean) {
-  const found = stages.find((item) => item.stage === stageKey)
-  if (!found) return running ? 'idle' : 'idle'
-  return found.status
-}
-
 const TONE_STYLES = {
   success: 'border-emerald-200 bg-emerald-50 text-emerald-800',
   warning: 'border-amber-200 bg-amber-50 text-amber-800',
@@ -22,11 +16,19 @@ const TONE_STYLES = {
 } as const
 
 export function DiagnosticStepList({ stages, running }: DiagnosticStepListProps) {
+  const safeStages = Array.isArray(stages) ? stages : []
+
   return (
     <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2">
       {DIAGNOSTIC_STEPS.map((step) => {
-        const stage = stages.find((item) => item.stage === step.stage)
-        const tone = stage ? stage.status : running ? 'idle' : 'idle'
+        const stage = safeStages.find((item) => item.stage === step.stage)
+        const resolvedTone =
+          stage?.status && stage.status in TONE_STYLES
+            ? stage.status
+            : running
+              ? 'running'
+              : 'idle'
+        const tone = resolvedTone as keyof typeof TONE_STYLES
         const Icon =
           tone === 'success'
             ? CheckCircle2
@@ -43,7 +45,7 @@ export function DiagnosticStepList({ stages, running }: DiagnosticStepListProps)
         return (
           <li
             key={step.stage}
-            className={`rounded-xl border px-3 py-2.5 text-sm ${TONE_STYLES[toneFor(step.stage, stages, running)]}`}
+            className={`rounded-xl border px-3 py-2.5 text-sm ${TONE_STYLES[tone] ?? TONE_STYLES.idle}`}
           >
             <div className="flex items-start gap-2">
               <Icon

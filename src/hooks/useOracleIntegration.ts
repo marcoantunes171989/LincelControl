@@ -24,11 +24,15 @@ export function useOracleIntegration() {
     try {
       const next = await oracleApi.getStatus()
       setStatus(next)
-      setStages(next.stages ?? [])
+      setStages(Array.isArray(next.stages) ? next.stages : [])
       setApiReachable(true)
+      setError(null)
       return next
-    } catch {
+    } catch (err) {
+      setStatus(null)
+      setStages([])
       setApiReachable(false)
+      setError(err instanceof Error ? err.message : 'API Oracle indisponível')
       return null
     }
   }, [])
@@ -51,11 +55,10 @@ export function useOracleIntegration() {
           password: current.password,
         }))
       }
-      await refreshStatus()
-      setApiReachable(true)
     } catch {
-      setApiReachable(false)
+      // Configuração pode falhar se a API estiver offline; o status abaixo define o aviso.
     }
+    await refreshStatus()
   }, [refreshStatus])
 
   useEffect(() => {

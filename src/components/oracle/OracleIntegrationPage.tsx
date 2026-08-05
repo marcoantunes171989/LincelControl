@@ -76,7 +76,8 @@ export function OracleIntegrationPage({ onToast }: OracleIntegrationPageProps) {
     refreshStatus,
   } = useOracleIntegration()
 
-  const currentStatus = status?.status ?? 'not_configured'
+  const currentStatus: OracleConnectionStatus =
+    status?.status && status.status in STATUS_LABELS ? status.status : 'not_configured'
 
   return (
     <div className="flex flex-col gap-6">
@@ -378,25 +379,25 @@ export function OracleIntegrationPage({ onToast }: OracleIntegrationPageProps) {
               <div className="rounded-lg border border-slate-100 px-3 py-2">
                 <dt className="text-xs text-slate-500">Alias / Usuário</dt>
                 <dd className="font-medium text-slate-800">
-                  {status?.database.alias || '—'} / {status?.database.sessionUser || form.username || '—'}
+                  {status?.database?.alias || '—'} / {status?.database?.sessionUser || form.username || '—'}
                 </dd>
               </div>
               <div className="rounded-lg border border-slate-100 px-3 py-2">
                 <dt className="text-xs text-slate-500">Host:Porta / DB</dt>
                 <dd className="font-medium text-slate-800">
-                  {status?.database.host || '—'}:{status?.database.port || '—'} /{' '}
-                  {status?.database.serviceName || status?.database.sid || '—'}
+                  {status?.database?.host || '—'}:{status?.database?.port || '—'} /{' '}
+                  {status?.database?.serviceName || status?.database?.sid || '—'}
                 </dd>
               </div>
               <div className="rounded-lg border border-slate-100 px-3 py-2">
                 <dt className="text-xs text-slate-500">Instância / Servidor</dt>
                 <dd className="font-medium text-slate-800">
-                  {status?.database.instanceName || '—'} / {status?.database.serverHost || '—'}
+                  {status?.database?.instanceName || '—'} / {status?.database?.serverHost || '—'}
                 </dd>
               </div>
               <div className="rounded-lg border border-slate-100 px-3 py-2">
                 <dt className="text-xs text-slate-500">Versão do banco</dt>
-                <dd className="font-medium text-slate-800">{status?.database.oracleVersion || '—'}</dd>
+                <dd className="font-medium text-slate-800">{status?.database?.oracleVersion || '—'}</dd>
               </div>
             </dl>
           </div>
