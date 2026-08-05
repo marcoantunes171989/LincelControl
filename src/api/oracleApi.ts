@@ -92,6 +92,22 @@ export const oracleApi = {
       method: 'POST',
       body: JSON.stringify(payload),
     }),
+  saveTnsAdmin: (tnsAdminPath: string, tnsFileName = 'tnsnames.ora') =>
+    request<{
+      ok: boolean
+      message: string
+      tnsAdminPath: string
+      tnsFileName: string
+      filePath: string
+      aliases: string[]
+      aliasDetails: TnsAliasInfo[]
+      configuration?: OracleConfigurationPayload
+      settings: OracleConfigurationPayload
+      status: OracleRuntimeStatus
+    }>('/api/oracle/tns-admin', {
+      method: 'POST',
+      body: JSON.stringify({ tnsAdminPath, tnsFileName }),
+    }),
   listAliases: (tnsAdminPath: string, tnsFileName: string) =>
     request<{ ok: boolean; aliases: string[]; filePath: string }>('/api/oracle/tns-aliases', {
       method: 'POST',

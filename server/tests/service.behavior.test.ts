@@ -88,6 +88,35 @@ TEST_ALIAS =
     expect(result.aliases).toContain('TEST_ALIAS')
   })
 
+  it('salva TNS_ADMIN, valida arquivo e carrega aliases', async () => {
+    const dataDir = tempDirs[0]
+    const tnsDir = path.join(dataDir, 'network', 'admin')
+    fs.mkdirSync(tnsDir, { recursive: true })
+    fs.writeFileSync(
+      path.join(tnsDir, 'tnsnames.ora'),
+      `
+ORCL =
+  (DESCRIPTION =
+    (ADDRESS = (PROTOCOL = TCP)(HOST = 172.26.3.2)(PORT = 1521))
+    (CONNECT_DATA = (SERVICE_NAME = orcl))
+  )
+`,
+      'utf8',
+    )
+
+    const { oracleService } = await loadService(dataDir)
+    const result = await oracleService.saveTnsAdmin({
+      tnsAdminPath: tnsDir,
+      tnsFileName: 'tnsnames.ora',
+    })
+
+    expect(result.aliases).toContain('ORCL')
+    expect(result.settings.tnsAdminPath).toBe(tnsDir)
+    expect(result.settings.expectedHost).toBe('172.26.3.2')
+    expect(result.settings.expectedDatabase).toBe('orcl')
+    expect(process.env.TNS_ADMIN).toBe(tnsDir)
+  })
+
   it('consulta com pool desconectado falha', async () => {
     const dataDir = tempDirs[0]
     const { oracleService } = await loadService(dataDir)

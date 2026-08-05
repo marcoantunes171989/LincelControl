@@ -430,7 +430,8 @@ export function OracleIntegrationPage({ onToast }: OracleIntegrationPageProps) {
               label="TNS_ADMIN"
               value={form.tnsAdminPath}
               onChange={(value) => updateField('tnsAdminPath', value)}
-              placeholder="\\SERVIDOR\Oracle\Network\Admin"
+              placeholder="C:\oracle\app\product\11.2.0\client_1\network\admin"
+              required
             />
             <SettingsInput
               id="tnsFileName"
@@ -439,18 +440,31 @@ export function OracleIntegrationPage({ onToast }: OracleIntegrationPageProps) {
               onChange={(value) => updateField('tnsFileName', value)}
               placeholder="tnsnames.ora"
             />
-            <button
-              type="button"
-              disabled={busy}
-              onClick={() =>
-                void saveAdvanced().then((ok) => {
-                  if (ok) onToast?.('TNS_ADMIN salvo.')
-                })
-              }
-              className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"
-            >
-              Salvar TNS_ADMIN
-            </button>
+            <p className="text-xs text-slate-500">
+              A API local valida se a pasta e o arquivo existem, define <code className="font-mono">TNS_ADMIN</code> e
+              carrega os aliases em Database.
+            </p>
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                disabled={busy || !form.tnsAdminPath.trim()}
+                onClick={() =>
+                  void saveAdvanced().then((result) => {
+                    onToast?.(result.message)
+                  })
+                }
+                className="inline-flex min-h-11 items-center gap-2 rounded-lg bg-slate-800 px-4 text-sm font-semibold text-white transition hover:bg-slate-900 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400"
+              >
+                {busy ? <Loader2 size={15} className="animate-spin" aria-hidden="true" /> : null}
+                Salvar TNS_ADMIN
+              </button>
+              {form.tnsAdminPath.trim() && aliases.length > 0 && (
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
+                  <CheckCircle2 size={13} />
+                  {aliases.length} alias(es) carregado(s)
+                </span>
+              )}
+            </div>
           </div>
         )}
       </section>

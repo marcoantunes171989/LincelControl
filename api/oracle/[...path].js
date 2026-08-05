@@ -75,6 +75,16 @@ export default function handler(req, res) {
     return
   }
 
+  if (req.method === 'POST' && (route === 'tns-admin' || route === 'configuration' || route === 'tns-import')) {
+    res.status(503).json({
+      ok: false,
+      message: `${LOCAL_API_HINT} O botão Salvar TNS_ADMIN precisa da API local para ler a pasta no disco.`,
+      hostMode: 'vercel-stub',
+      route,
+    })
+    return
+  }
+
   res.status(503).json({
     ok: false,
     message: LOCAL_API_HINT,

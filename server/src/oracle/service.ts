@@ -87,6 +87,111 @@ class OracleIntegrationService {
     return saved
   }
 
+  /**
+   * Salva TNS_ADMIN + arquivo, valida existência no disco da API,
+   * define process.env.TNS_ADMIN e retorna os aliases encontrados.
+   */
+  async saveTnsAdmin(input: {
+    tnsAdminPath: string
+    tnsFileName?: string
+  }): Promise<{
+    tnsAdminPath: string
+    tnsFileName: string
+    filePath: string
+    aliases: string[]
+    aliasDetails: TnsAliasInfo[]
+    settings: OracleConnectionSettings
+  }> {
+    const adminPath = input.tnsAdminPath.trim()
+    const fileName = (input.tnsFileName || 'tnsnames.ora').trim() || 'tnsnames.ora'
+
+    if (!adminPath) {
+      throw Object.assign(new Error('Informe o caminho TNS_ADMIN (pasta do tnsnames.ora).'), {
+        statusCode: 400,
+      })
+    }
+
+    try {
+      await fs.access(adminPath)
+    } catch {
+      throw Object.assign(
+        new Error(`Pasta TNS_ADMIN não encontrada ou inacessível: ${adminPath}`),
+        { statusCode: 400 },
+      )
+    }
+
+    const filePath = path.join(adminPath, fileName)
+    try {
+      await fs.access(filePath)
+    } catch {
+      throw Object.assign(new Error(`Arquivo TNS não encontrado: ${filePath}`), { statusCode: 400 })
+    }
+
+    const content = await this.readTnsFile(adminPath, fileName)
+    const aliasDetails = parseTnsNames(content)
+    if (aliasDetails.length === 0) {
+      throw Object.assign(new Error(`Nenhum alias encontrado em ${fileName}.`), { statusCode: 400 })
+    }
+
+    process.env.TNS_ADMIN = adminPath
+
+    const current = getOracleSettings()
+    const preferred =
+      aliasDetails.find((item) => item.alias.toUpperCase() === (current?.tnsAlias || '').toUpperCase()) ||
+      aliasDetails[0]
+
+    const settings = saveOracleSettings({
+      tnsAdminPath: adminPath,
+      tnsFileName: fileName,
+      tnsAlias: preferred.alias,
+      oracleClientLibDir: current?.oracleClientLibDir || '',
+      expectedHost: preferred.hosts[0] || current?.expectedHost || '',
+      expectedPort: preferred.ports[0] ?? current?.expectedPort ?? 1521,
+      expectedDatabase: preferred.serviceName || preferred.sid || current?.expectedDatabase || '',
+      username: current?.username || '',
+    })
+
+    if (this.status === 'not_configured') {
+      this.status = 'disconnected'
+    }
+    this.parsedAlias = preferred
+
+    this.pushStage({
+      stage: 'tns-file',
+      ok: true,
+      status: 'success',
+      message: `TNS_ADMIN salvo: ${fileName} (${aliasDetails.length} alias(es)).`,
+      details: { filePath, aliasCount: aliasDetails.length },
+    })
+    this.pushStage({
+      stage: 'tns-alias',
+      ok: true,
+      status: 'success',
+      message: `Alias padrão: ${preferred.alias}`,
+      details: {
+        hosts: preferred.hosts,
+        ports: preferred.ports,
+        serviceName: preferred.serviceName,
+        sid: preferred.sid,
+      },
+    })
+
+    logger.info('TNS_ADMIN salvo e validado', {
+      tnsAdminPath: adminPath,
+      tnsFileName: fileName,
+      aliasCount: aliasDetails.length,
+    })
+
+    return {
+      tnsAdminPath: adminPath,
+      tnsFileName: fileName,
+      filePath,
+      aliases: aliasDetails.map((item) => item.alias),
+      aliasDetails,
+      settings,
+    }
+  }
+
   setPassword(password: string | undefined | null): void {
     if (typeof password === 'string' && password.length > 0) {
       this.passwordInMemory = password

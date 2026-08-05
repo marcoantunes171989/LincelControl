@@ -329,20 +329,50 @@ export function useOracleIntegration() {
     }
   }, [refreshStatus])
 
-  const saveAdvanced = useCallback(async () => {
+  /** Salva TNS_ADMIN na API, valida pasta/arquivo e carrega aliases. */
+  const saveAdvanced = useCallback(async (): Promise<{ ok: boolean; message: string }> => {
+    const adminPath = form.tnsAdminPath.trim()
+    const fileName = form.tnsFileName.trim() || 'tnsnames.ora'
+
+    if (!adminPath) {
+      const message = 'Informe o caminho TNS_ADMIN (pasta onde está o tnsnames.ora).'
+      setError(message)
+      setShowAdvanced(true)
+      return { ok: false, message }
+    }
+
     setBusy(true)
     setError(null)
+    setProgress('Salvando e validando TNS_ADMIN...')
     try {
-      await oracleApi.saveConfiguration(toPayload())
-      await refreshStatus()
-      return true
+      const result = await oracleApi.saveTnsAdmin(adminPath, fileName)
+      updateField('tnsAdminPath', result.tnsAdminPath)
+      updateField('tnsFileName', result.tnsFileName)
+      setAliases(result.aliases)
+      setAliasDetails(result.aliasDetails)
+      setTnsImported(true)
+      setTnsFileLabel(`${result.tnsFileName} · ${result.aliases.length} alias(es)`)
+
+      const preferred =
+        result.aliasDetails.find((item) => item.alias.toUpperCase() === form.tnsAlias.toUpperCase()) ||
+        result.aliasDetails[0]
+      if (preferred) {
+        selectAlias(preferred.alias, result.aliasDetails)
+      }
+
+      setStatus(result.status)
+      setStages(Array.isArray(result.status.stages) ? result.status.stages : [])
+      setProgress(null)
+      return { ok: true, message: result.message }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Falha ao salvar ambiente')
-      return false
+      const message = err instanceof Error ? err.message : 'Falha ao salvar TNS_ADMIN'
+      setError(message)
+      setProgress(null)
+      return { ok: false, message }
     } finally {
       setBusy(false)
     }
-  }, [refreshStatus, toPayload])
+  }, [form.tnsAdminPath, form.tnsAlias, form.tnsFileName, selectAlias, updateField])
 
   return {
     form,

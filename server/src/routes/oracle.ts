@@ -88,6 +88,25 @@ oracleRouter.post('/configuration', requirePermission('oracle.configure'), (req,
   }
 })
 
+oracleRouter.post('/tns-admin', requirePermission('oracle.configure'), validationRateLimit, async (req, res, next) => {
+  try {
+    const schema = z.object({
+      tnsAdminPath: z.string().min(1),
+      tnsFileName: z.string().min(1).optional().default('tnsnames.ora'),
+    })
+    const body = schema.parse(req.body)
+    const result = await oracleService.saveTnsAdmin(body)
+    res.json({
+      ok: true,
+      message: `TNS_ADMIN salvo. ${result.aliases.length} alias(es) carregado(s) de ${result.tnsFileName}.`,
+      ...result,
+      status: oracleService.getStatus(),
+    })
+  } catch (error) {
+    next(error)
+  }
+})
+
 oracleRouter.get('/tns-aliases', requirePermission('oracle.configure'), async (req, res, next) => {
   try {
     const query = aliasesSchema.parse(req.query)
