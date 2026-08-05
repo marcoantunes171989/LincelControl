@@ -21,7 +21,7 @@ export function ModuleFilter({ status, onStatusChange, category, onCategoryChang
       <div
         role="group"
         aria-label="Filtrar por estado de seleção"
-        className="grid grid-cols-3 gap-1 rounded-xl bg-slate-100 p-1"
+        className="grid grid-cols-3 gap-1 rounded-xl bg-slate-100 p-1 sm:gap-1.5"
       >
         {STATUS_OPTIONS.map((option) => {
           const isActive = option.value === status
@@ -31,7 +31,7 @@ export function ModuleFilter({ status, onStatusChange, category, onCategoryChang
               type="button"
               onClick={() => onStatusChange(option.value)}
               aria-pressed={isActive}
-              className={`min-h-9 rounded-lg px-2 text-xs font-semibold transition ${
+              className={`min-h-10 rounded-lg px-1.5 text-[11px] font-semibold transition sm:min-h-9 sm:px-2 sm:text-xs ${
                 isActive ? 'bg-white text-blue-700 shadow' : 'text-slate-500 hover:text-slate-700'
               }`}
             >

@@ -6,11 +6,11 @@ interface Step {
   label: string
 }
 
-const STEPS: Step[] = [
-  { id: 'loja', label: 'Loja' },
-  { id: 'licenca', label: 'Licença e PDVs' },
-  { id: 'modulos', label: 'Módulos e integrações' },
-  { id: 'revisao', label: 'Revisão e SQL' },
+const STEPS: (Step & { shortLabel: string })[] = [
+  { id: 'loja', label: 'Loja', shortLabel: 'Loja' },
+  { id: 'licenca', label: 'Licença e PDVs', shortLabel: 'Licença' },
+  { id: 'modulos', label: 'Módulos e integrações', shortLabel: 'Módulos' },
+  { id: 'revisao', label: 'Revisão e SQL', shortLabel: 'Revisão' },
 ]
 
 interface ProgressNavigationProps {
@@ -54,17 +54,18 @@ export function ProgressNavigation({ completedSteps }: ProgressNavigationProps) 
       className="sticky top-0 z-30 w-full min-w-0 border-b border-slate-200 bg-white/95 backdrop-blur"
     >
       <div className="mx-auto min-w-0 max-w-[1600px] px-4 sm:px-6 lg:px-8">
-        <ol className="scrollbar-none flex min-w-0 gap-1 overflow-x-auto py-2">
+        <ol className="scrollbar-none flex min-w-0 snap-x snap-mandatory gap-1 overflow-x-auto py-2">
           {STEPS.map((step, index) => {
             const isActive = step.id === activeId
             const isDone = completedSteps.has(step.id)
             return (
-              <li key={step.id} className="shrink-0">
+              <li key={step.id} className="shrink-0 snap-start">
                 <button
                   type="button"
                   onClick={() => handleNavigate(step.id)}
                   aria-current={isActive ? 'step' : undefined}
-                  className={`flex min-h-11 items-center gap-2 whitespace-nowrap rounded-lg px-3 text-sm font-medium transition ${
+                  aria-label={step.label}
+                  className={`flex min-h-11 items-center gap-2 whitespace-nowrap rounded-lg px-2.5 text-sm font-medium transition sm:px-3 ${
                     isActive ? 'bg-blue-50 text-blue-700' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-700'
                   }`}
                 >
@@ -76,7 +77,8 @@ export function ProgressNavigation({ completedSteps }: ProgressNavigationProps) 
                   >
                     {isDone && !isActive ? <Check size={12} /> : index + 1}
                   </span>
-                  {step.label}
+                  <span className="sm:hidden">{step.shortLabel}</span>
+                  <span className="hidden sm:inline">{step.label}</span>
                   {isDone && <span className="sr-only"> (concluído)</span>}
                 </button>
               </li>

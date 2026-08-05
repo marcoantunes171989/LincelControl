@@ -47,7 +47,7 @@ export function ConfigurationReview({
       </h2>
       <p className="mt-1 text-sm text-slate-500">Confira os dados antes de copiar ou baixar o script.</p>
 
-      <dl className="mt-4 grid grid-cols-2 gap-x-3 gap-y-4 sm:grid-cols-3">
+      <dl className="mt-4 grid grid-cols-1 gap-x-3 gap-y-4 min-[480px]:grid-cols-2 md:grid-cols-3">
         <div className="min-w-0">
           <dt className="text-[11px] font-medium uppercase tracking-wide text-slate-400">Loja</dt>
           <dd className="truncate text-sm font-semibold text-slate-900">{store.descricao || '—'}</dd>

@@ -46,32 +46,35 @@ export function PageHeader({ status, onClear, onCopy, onDownload, copyDisabled, 
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2 lg:shrink-0" role="group" aria-label="Ações rápidas">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-2 lg:shrink-0 lg:justify-end" role="group" aria-label="Ações rápidas">
             <button
               type="button"
               onClick={onClear}
+              aria-label="Limpar formulário"
               className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-3 text-sm font-medium text-slate-600 transition hover:bg-slate-50 sm:flex-none"
             >
               <Trash2 size={16} aria-hidden="true" />
-              Limpar
+              <span className="hidden sm:inline">Limpar</span>
             </button>
             <button
               type="button"
               onClick={onCopy}
               disabled={copyDisabled}
+              aria-label="Copiar script SQL"
               className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-3 text-sm font-medium text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 sm:flex-none"
             >
               <Copy size={16} aria-hidden="true" />
-              Copiar
+              <span className="hidden sm:inline">Copiar</span>
             </button>
             <button
               type="button"
               onClick={onDownload}
               disabled={downloadDisabled}
+              aria-label="Baixar script SQL"
               className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-lg bg-blue-600 px-3 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400 sm:flex-none"
             >
               <Download size={16} aria-hidden="true" />
-              Baixar SQL
+              <span className="hidden sm:inline">Baixar SQL</span>
             </button>
           </div>
         </div>

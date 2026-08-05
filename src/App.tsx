@@ -4,6 +4,7 @@ import { ActionBar } from './components/ActionBar'
 import { ConfigurationReview } from './components/ConfigurationReview'
 import { ConfirmationModal } from './components/ConfirmationModal'
 import { LicensePdvCard } from './components/LicensePdvCard'
+import { MobileActionBar } from './components/MobileActionBar'
 import { ModuleFilter } from './components/ModuleFilter'
 import { ModuleGrid } from './components/ModuleGrid'
 import { ModuleToolbar } from './components/ModuleToolbar'
@@ -61,6 +62,11 @@ function App() {
     const timer = window.setTimeout(() => setToastMessage(null), 3000)
     return () => window.clearTimeout(timer)
   }, [toastMessage])
+
+  useEffect(() => {
+    document.body.classList.toggle('has-mobile-actions', isValid)
+    return () => document.body.classList.remove('has-mobile-actions')
+  }, [isValid])
 
   const handleCopy = useCallback(async () => {
     if (!isValid) return
@@ -140,7 +146,7 @@ function App() {
   }, [errors, store, license, isValid])
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen min-h-[100dvh] bg-slate-50">
       <PageHeader
         status={formStatus}
         onClear={() => setActiveModal('clear')}
@@ -151,12 +157,12 @@ function App() {
       />
       <ProgressNavigation completedSteps={completedSteps} />
 
-      <main className="mx-auto max-w-[1600px] px-4 py-6 sm:px-6 lg:px-8">
+      <main className="mx-auto max-w-[1600px] px-3 py-5 sm:px-6 sm:py-6 lg:px-8">
         <div className="mb-6">
           <ValidationSummary errors={errors} />
         </div>
 
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,58fr)_minmax(0,42fr)] lg:items-start">
+        <div className="grid grid-cols-1 gap-5 md:gap-6 lg:grid-cols-[minmax(0,58fr)_minmax(0,42fr)] lg:items-start">
           <div className="flex flex-col gap-6">
             <StoreInformationCard
               store={store}
@@ -216,7 +222,7 @@ function App() {
             </section>
           </div>
 
-          <div className="flex flex-col gap-4 lg:sticky lg:top-20">
+          <div className="flex flex-col gap-4 md:gap-6 lg:sticky lg:top-20">
             <ConfigurationReview
               store={store}
               license={license}
@@ -244,6 +250,12 @@ function App() {
           </div>
         </div>
       </main>
+
+      <MobileActionBar
+        disabled={!isValid}
+        onCopy={handleCopy}
+        onDownload={() => setActiveModal('download')}
+      />
 
       <ConfirmationModal
         open={activeModal === 'download'}

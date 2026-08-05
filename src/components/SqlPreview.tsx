@@ -161,7 +161,7 @@ export function SqlPreview({
 
       <div className="mt-4 overflow-hidden rounded-xl border border-slate-800 bg-[#0d1117] shadow-inner">
         <SqlToolbar fileName={fileName} onCopy={onCopy} copyDisabled={!isValid} />
-        <CodeBlock lines={lines} maxHeightClassName="max-h-[50vh] lg:max-h-[55vh]" />
+        <CodeBlock lines={lines} maxHeightClassName="max-h-[40vh] sm:max-h-[45vh] md:max-h-[50vh] lg:max-h-[55vh]" />
         <div className="flex items-center justify-between border-t border-slate-800 bg-slate-950/70 px-4 py-1.5 text-[11px] text-slate-500">
           <span>SQL · UPDATE TAB_LOJA</span>
           <span>{lines.length} linhas</span>

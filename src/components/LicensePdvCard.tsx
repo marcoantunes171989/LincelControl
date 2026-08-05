@@ -29,7 +29,7 @@ export function LicensePdvCard({ license, errors, onChange }: LicensePdvCardProp
         <p className="mt-1 text-sm text-slate-500">Todos os campos abaixo são incluídos no UPDATE gerado.</p>
       </div>
 
-      <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+      <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3">
         <FormField
           id="num-licenca"
           label="Número da licença"

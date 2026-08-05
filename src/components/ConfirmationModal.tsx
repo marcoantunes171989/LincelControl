@@ -45,7 +45,7 @@ export function ConfirmationModal({
         aria-modal="true"
         aria-labelledby="confirmation-modal-title"
         aria-describedby="confirmation-modal-description"
-        className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl"
+        className="mx-4 w-full max-w-sm rounded-2xl bg-white p-5 shadow-xl sm:mx-0 sm:p-6"
       >
         <h2 id="confirmation-modal-title" className="text-base font-semibold text-slate-900">
           {title}
@@ -53,7 +53,7 @@ export function ConfirmationModal({
         <p id="confirmation-modal-description" className="mt-2 text-sm text-slate-600">
           {description}
         </p>
-        <div className="mt-5 grid grid-cols-2 gap-3">
+        <div className="mt-5 flex flex-col-reverse gap-3 sm:grid sm:grid-cols-2">
           <button
             type="button"
             onClick={onCancel}

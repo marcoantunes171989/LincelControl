@@ -68,7 +68,7 @@ export function FormField({
         <DatabaseFieldBadge field={dbField} />
       </div>
 
-      <div className="relative flex items-stretch gap-1.5">
+      <div className="relative flex flex-col gap-1.5 sm:flex-row sm:items-stretch">
         <input
           id={id}
           value={loading ? 'Consultando...' : value}
@@ -106,12 +106,12 @@ export function FormField({
           </button>
         )}
         {stepper && (
-          <div className="flex shrink-0 overflow-hidden rounded-lg border border-slate-300">
+          <div className="flex shrink-0 self-stretch overflow-hidden rounded-lg border border-slate-300 sm:self-auto">
             <button
               type="button"
               onClick={() => handleStep(-1)}
               aria-label={`Diminuir ${label}`}
-              className="flex min-h-11 w-10 items-center justify-center text-slate-500 transition hover:bg-slate-50 hover:text-slate-700"
+              className="flex min-h-11 flex-1 items-center justify-center text-slate-500 transition hover:bg-slate-50 hover:text-slate-700 sm:w-10 sm:flex-none"
             >
               <Minus size={15} aria-hidden="true" />
             </button>
@@ -119,7 +119,7 @@ export function FormField({
               type="button"
               onClick={() => handleStep(1)}
               aria-label={`Aumentar ${label}`}
-              className="flex min-h-11 w-10 items-center justify-center border-l border-slate-300 text-slate-500 transition hover:bg-slate-50 hover:text-slate-700"
+              className="flex min-h-11 flex-1 items-center justify-center border-l border-slate-300 text-slate-500 transition hover:bg-slate-50 hover:text-slate-700 sm:w-10 sm:flex-none"
             >
               <Plus size={15} aria-hidden="true" />
             </button>
