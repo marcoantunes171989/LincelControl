@@ -8,6 +8,15 @@ import {
   type TnsAliasInfo,
 } from '../types/oracle'
 
+export interface ClientValidationResult {
+  ok: boolean
+  message: string
+  ociDllFound?: boolean
+  clientVersion?: string | null
+  architecture?: string
+  libDir?: string
+}
+
 export function useOracleIntegration() {
   const [form, setForm] = useState<OracleFormState>(EMPTY_ORACLE_FORM)
   const [status, setStatus] = useState<OracleRuntimeStatus | null>(null)
@@ -20,6 +29,7 @@ export function useOracleIntegration() {
   const [showPassword, setShowPassword] = useState(false)
   const [apiReachable, setApiReachable] = useState<boolean | null>(null)
   const [showAdvanced, setShowAdvanced] = useState(false)
+  const [clientValidation, setClientValidation] = useState<ClientValidationResult | null>(null)
 
   const refreshStatus = useCallback(async () => {
     try {
@@ -68,6 +78,9 @@ export function useOracleIntegration() {
 
   const updateField = useCallback(<K extends keyof OracleFormState>(field: K, value: OracleFormState[K]) => {
     setForm((current) => ({ ...current, [field]: value }))
+    if (field === 'oracleClientLibDir') {
+      setClientValidation(null)
+    }
   }, [])
 
   const toPayload = useCallback(
@@ -84,9 +97,70 @@ export function useOracleIntegration() {
     [form],
   )
 
+  const identityPayload = useCallback(
+    () => ({
+      username: form.username.trim(),
+      tnsAlias: form.tnsAlias.trim(),
+      oracleClientLibDir: form.oracleClientLibDir.trim(),
+      tnsAdminPath: form.tnsAdminPath.trim(),
+      tnsFileName: form.tnsFileName.trim() || 'tnsnames.ora',
+    }),
+    [form],
+  )
+
+  /** Valida o caminho do Oracle Client informado no navegador via API local. */
+  const validateClientPath = useCallback(async (): Promise<ClientValidationResult> => {
+    const libDir = form.oracleClientLibDir.trim()
+    if (!libDir) {
+      const result = {
+        ok: false,
+        message: 'Informe o caminho do Oracle Client (pasta onde está a OCI.DLL).',
+      }
+      setClientValidation(result)
+      setError(result.message)
+      return result
+    }
+
+    setBusy(true)
+    setError(null)
+    setProgress('Validando Oracle Client e OCI.DLL...')
+    try {
+      const result = await oracleApi.validateClient(libDir, form.tnsAdminPath.trim() || undefined)
+      const mapped: ClientValidationResult = {
+        ok: result.ok,
+        message: result.message,
+        ociDllFound: result.ociDllFound,
+        clientVersion: result.clientVersion,
+        architecture: (result as { architecture?: string }).architecture,
+        libDir,
+      }
+      setClientValidation(mapped)
+      if (!result.ok) setError(result.message)
+      await oracleApi.saveConfiguration(toPayload())
+      await refreshStatus()
+      setProgress(null)
+      return mapped
+    } catch (err) {
+      const mapped: ClientValidationResult = {
+        ok: false,
+        message:
+          err instanceof Error
+            ? err.message
+            : 'Falha ao validar Oracle Client. A API local precisa acessar o caminho informado.',
+        libDir,
+      }
+      setClientValidation(mapped)
+      setError(mapped.message)
+      setProgress(null)
+      return mapped
+    } finally {
+      setBusy(false)
+    }
+  }, [form.oracleClientLibDir, form.tnsAdminPath, refreshStatus, toPayload])
+
   const loadAliases = useCallback(async () => {
     if (!form.tnsAdminPath.trim()) {
-      setError('Informe o caminho do TNS_ADMIN nas opções avançadas para listar os aliases.')
+      setError('Informe o TNS_ADMIN para listar os aliases do tnsnames.ora.')
       setShowAdvanced(true)
       return []
     }
@@ -104,8 +178,12 @@ export function useOracleIntegration() {
     }
   }, [form.tnsAdminPath, form.tnsFileName])
 
-  /** Conectar como no PL/SQL Developer: Username + Password + Database (TNS). */
+  /** Logon: valida Client no caminho informado → conecta com TNS + usuário/senha. */
   const logon = useCallback(async (): Promise<boolean> => {
+    if (!form.oracleClientLibDir.trim()) {
+      setError('Informe o caminho do Oracle Client para validar a OCI.DLL.')
+      return false
+    }
     if (!form.username.trim() || !form.tnsAlias.trim()) {
       setError('Informe Username e Database (alias TNS).')
       return false
@@ -117,13 +195,28 @@ export function useOracleIntegration() {
 
     setBusy(true)
     setError(null)
-    setProgress('Conectando ao Oracle...')
     try {
-      await oracleApi.saveConfiguration(toPayload())
-      const result = await oracleApi.connect(form.password || undefined, {
-        username: form.username.trim(),
-        tnsAlias: form.tnsAlias.trim(),
+      setProgress('1. Validando Oracle Client (OCI.DLL)...')
+      const client = await oracleApi.validateClient(
+        form.oracleClientLibDir.trim(),
+        form.tnsAdminPath.trim() || undefined,
+      )
+      setClientValidation({
+        ok: client.ok,
+        message: client.message,
+        ociDllFound: client.ociDllFound,
+        clientVersion: client.clientVersion,
+        libDir: form.oracleClientLibDir.trim(),
       })
+      if (!client.ok) {
+        setError(client.message)
+        setProgress(null)
+        return false
+      }
+
+      setProgress('2. Salvando apontamento e conectando...')
+      await oracleApi.saveConfiguration(toPayload())
+      const result = await oracleApi.connect(form.password || undefined, identityPayload())
       setStatus(result.status)
       setStages(result.status.stages ?? [])
       setForm((current) => ({ ...current, password: '' }))
@@ -137,7 +230,17 @@ export function useOracleIntegration() {
     } finally {
       setBusy(false)
     }
-  }, [form.password, form.tnsAlias, form.username, refreshStatus, status?.passwordAvailableInMemory, toPayload])
+  }, [
+    form.oracleClientLibDir,
+    form.password,
+    form.tnsAdminPath,
+    form.tnsAlias,
+    form.username,
+    identityPayload,
+    refreshStatus,
+    status?.passwordAvailableInMemory,
+    toPayload,
+  ])
 
   const logoff = useCallback(async (): Promise<boolean> => {
     setBusy(true)
@@ -186,12 +289,14 @@ export function useOracleIntegration() {
     showPassword,
     showAdvanced,
     apiReachable,
+    clientValidation,
     setShowPassword,
     setShowAdvanced,
     setError,
     updateField,
     refreshStatus,
     loadAliases,
+    validateClientPath,
     logon,
     logoff,
     saveAdvanced,

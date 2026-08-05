@@ -89,19 +89,33 @@ export const oracleApi = {
       body: JSON.stringify({ tnsAdminPath, tnsFileName, tnsAlias }),
     }),
   validateClient: (oracleClientLibDir: string, tnsAdminPath?: string) =>
-    request<{ ok: boolean; message: string; clientVersion?: string | null; ociDllFound?: boolean }>(
-      '/api/oracle/validate-client',
-      {
-        method: 'POST',
-        body: JSON.stringify({ oracleClientLibDir, tnsAdminPath }),
-      },
-    ),
+    request<{
+      ok: boolean
+      message: string
+      clientVersion?: string | null
+      ociDllFound?: boolean
+      architecture?: string
+      libDir?: string
+      ociDllPath?: string | null
+    }>('/api/oracle/validate-client', {
+      method: 'POST',
+      body: JSON.stringify({ oracleClientLibDir, tnsAdminPath }),
+    }),
   validate: (password?: string) =>
     request<OracleValidateResponse>('/api/oracle/validate', {
       method: 'POST',
       body: JSON.stringify(password ? { password, mode: 'simple' } : { mode: 'simple' }),
     }),
-  connect: (password?: string, identity?: { username?: string; tnsAlias?: string }) =>
+  connect: (
+    password?: string,
+    identity?: {
+      username?: string
+      tnsAlias?: string
+      oracleClientLibDir?: string
+      tnsAdminPath?: string
+      tnsFileName?: string
+    },
+  ) =>
     request<{ ok: boolean; status: OracleRuntimeStatus }>('/api/oracle/connect', {
       method: 'POST',
       body: JSON.stringify({
@@ -109,6 +123,11 @@ export const oracleApi = {
         ...(password ? { password } : {}),
         ...(identity?.username ? { username: identity.username } : {}),
         ...(identity?.tnsAlias ? { tnsAlias: identity.tnsAlias } : {}),
+        ...(identity?.oracleClientLibDir !== undefined
+          ? { oracleClientLibDir: identity.oracleClientLibDir }
+          : {}),
+        ...(identity?.tnsAdminPath !== undefined ? { tnsAdminPath: identity.tnsAdminPath } : {}),
+        ...(identity?.tnsFileName ? { tnsFileName: identity.tnsFileName } : {}),
       }),
     }),
   disconnect: () =>

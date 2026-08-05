@@ -25,6 +25,9 @@ const connectSchema = z.object({
   password: z.string().min(1).optional(),
   username: z.string().min(1).optional(),
   tnsAlias: z.string().min(1).optional(),
+  oracleClientLibDir: z.string().optional(),
+  tnsAdminPath: z.string().optional(),
+  tnsFileName: z.string().optional(),
   mode: z.enum(['simple', 'full']).optional().default('simple'),
 })
 
@@ -33,6 +36,9 @@ const toggleSchema = z.object({
   password: z.string().min(1).optional(),
   username: z.string().min(1).optional(),
   tnsAlias: z.string().min(1).optional(),
+  oracleClientLibDir: z.string().optional(),
+  tnsAdminPath: z.string().optional(),
+  tnsFileName: z.string().optional(),
   mode: z.enum(['simple', 'full']).optional().default('simple'),
 })
 
@@ -136,14 +142,27 @@ oracleRouter.post(
   },
 )
 
-function applyLogonIdentity(body: { username?: string; tnsAlias?: string }) {
+function applyLogonIdentity(body: {
+  username?: string
+  tnsAlias?: string
+  oracleClientLibDir?: string
+  tnsAdminPath?: string
+  tnsFileName?: string
+}) {
   const current = oracleService.getSettings()
-  if (!body.username && !body.tnsAlias) return
+  const hasIdentity =
+    body.username ||
+    body.tnsAlias ||
+    body.oracleClientLibDir !== undefined ||
+    body.tnsAdminPath !== undefined
+  if (!hasIdentity) return
+
   oracleService.saveConfiguration({
-    tnsAdminPath: current?.tnsAdminPath,
-    tnsFileName: current?.tnsFileName,
+    tnsAdminPath: body.tnsAdminPath !== undefined ? body.tnsAdminPath : current?.tnsAdminPath,
+    tnsFileName: body.tnsFileName || current?.tnsFileName,
     tnsAlias: body.tnsAlias || current?.tnsAlias || '',
-    oracleClientLibDir: current?.oracleClientLibDir,
+    oracleClientLibDir:
+      body.oracleClientLibDir !== undefined ? body.oracleClientLibDir : current?.oracleClientLibDir,
     expectedHost: current?.expectedHost,
     expectedPort: current?.expectedPort,
     expectedDatabase: current?.expectedDatabase,
