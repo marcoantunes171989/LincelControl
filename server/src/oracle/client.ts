@@ -50,8 +50,17 @@ export function getOracleClientState() {
  * Segura para ser chamada múltiplas vezes — só inicializa uma vez por processo,
  * salvo se libDir/configDir mudarem antes da primeira conexão bem-sucedida.
  */
+function normalizeLibDir(libDir: string): string {
+  let value = libDir.trim().replace(/[/\\]+$/, '')
+  const base = path.basename(value).toLowerCase()
+  if (base === 'oci.dll' || base === 'oci.d' || base === 'libclntsh.so' || /^libclntsh\.so/i.test(base)) {
+    value = path.dirname(value)
+  }
+  return value
+}
+
 export function initializeOracleClient(libDir?: string, configDir?: string): OracleClientValidation {
-  const resolvedLibDir = (libDir || env.oracleClientLibDir || '').trim()
+  const resolvedLibDir = normalizeLibDir(libDir || env.oracleClientLibDir || '')
   const resolvedConfigDir = (configDir || env.oracleTnsAdmin || '').trim() || null
   const architecture = process.arch
 

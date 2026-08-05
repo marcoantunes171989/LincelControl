@@ -36,10 +36,13 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 
   const contentType = response.headers.get('content-type') || ''
   const raw = await response.text()
+  const isStub = response.headers.get('x-licencontrol-api') === 'vercel-stub'
 
   // Na Vercel, /api/* pode cair no rewrite do SPA e devolver HTML 200.
   if (contentType.includes('text/html') || raw.trimStart().startsWith('<!')) {
-    throw new Error('API Oracle não disponível neste host. Use a API interna (npm run dev:server).')
+    throw new Error(
+      'API Oracle não disponível neste host. Execute npm run dev:server e use http://localhost:5173.',
+    )
   }
 
   let data: unknown = {}
@@ -47,7 +50,12 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     try {
       data = JSON.parse(raw)
     } catch {
-      throw new Error(`Resposta inválida da API (${response.status}).`)
+      if (response.status === 404) {
+        throw new Error(
+          'API Oracle não encontrada (404). Na Vercel só o frontend sobe — execute npm run dev:server e abra http://localhost:5173.',
+        )
+      }
+      throw new Error(`Resposta inválida da API (${response.status}). Verifique se npm run dev:server está ativo.`)
     }
   }
 
@@ -55,8 +63,14 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     const message =
       isPlainObject(data) && typeof data.message === 'string'
         ? data.message
-        : `Falha na API (${response.status})`
+        : response.status === 404
+          ? 'API Oracle não encontrada (404). Execute npm run dev:server na porta 8787.'
+          : `Falha na API (${response.status})`
     throw new Error(message)
+  }
+
+  if (isStub && isPlainObject(data)) {
+    data = { ...data, hostMode: 'vercel-stub' }
   }
 
   return data as T

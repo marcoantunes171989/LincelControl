@@ -117,7 +117,13 @@ export function OracleIntegrationPage({ onToast }: OracleIntegrationPageProps) {
     if (!files?.length) return
     const file = files[0]
     const ok = await importTnsFile(file)
-    if (ok) onToast?.(`TNS importado: ${file.name}. Selecione o Database e clique em OK.`)
+    if (ok) {
+      onToast?.(
+        apiReachable === false
+          ? `TNS lido: ${file.name}. Selecione o Database. Para conectar, use a API local.`
+          : `TNS importado: ${file.name}. Selecione o Database e clique em OK.`,
+      )
+    }
   }
 
   /**
@@ -169,12 +175,13 @@ export function OracleIntegrationPage({ onToast }: OracleIntegrationPageProps) {
         {apiReachable === false && (
           <div className="mt-4 flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
             <ShieldAlert size={16} className="mt-0.5 shrink-0" aria-hidden="true" />
-            A validação do Client exige a API local com acesso ao disco da máquina. Em{' '}
-            <a className="underline" href="https://lincel-control.vercel.app/" target="_blank" rel="noreferrer">
-              Vercel
-            </a>
-            , execute <code className="font-mono">npm run dev:server</code> no Windows onde o Instant Client está
-            instalado.
+            <span>
+              A API Oracle local não está disponível (Validar Client / conexão precisam dela). Você já pode{' '}
+              <strong>importar o tnsnames.ora</strong> neste navegador. Para validar a OCI.DLL e conectar, no Windows
+              com Oracle Client rode{' '}
+              <code className="font-mono">npm run dev:server</code> e abra{' '}
+              <code className="font-mono">http://localhost:5173</code>.
+            </span>
           </div>
         )}
 
@@ -224,7 +231,7 @@ export function OracleIntegrationPage({ onToast }: OracleIntegrationPageProps) {
             <div className="mt-3 flex flex-wrap items-center gap-2">
               <button
                 type="button"
-                disabled={busy || connected || apiReachable === false}
+                disabled={busy || connected}
                 onClick={() => tnsFileInputRef.current?.click()}
                 className="inline-flex min-h-11 items-center gap-2 rounded-lg bg-slate-800 px-3 text-sm font-semibold text-white transition hover:bg-slate-900 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400"
               >
@@ -409,7 +416,7 @@ export function OracleIntegrationPage({ onToast }: OracleIntegrationPageProps) {
               )}
               <button
                 type="button"
-                disabled={busy || connected || apiReachable === false}
+                disabled={busy || connected}
                 title="Importar tnsnames.ora"
                 onClick={() => tnsFileInputRef.current?.click()}
                 className="inline-flex min-h-11 shrink-0 items-center justify-center rounded-lg border border-slate-300 px-3 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"

@@ -7,6 +7,7 @@ import {
   type StageResult,
   type TnsAliasInfo,
 } from '../types/oracle'
+import { normalizeOracleClientDir } from '../utils/oracleClientPath'
 import { parseTnsNames } from '../utils/tnsParser'
 
 export interface ClientValidationResult {
@@ -40,8 +41,14 @@ export function useOracleIntegration() {
       const next = await oracleApi.getStatus()
       setStatus(next)
       setStages(Array.isArray(next.stages) ? next.stages : [])
-      setApiReachable(true)
-      setError(null)
+      // Stub da Vercel responde JSON, mas não executa Oracle de verdade.
+      const isStub = next.hostMode === 'vercel-stub'
+      setApiReachable(!isStub)
+      if (isStub) {
+        setError(next.lastError || 'API Oracle local necessária para validar Client e conectar.')
+      } else {
+        setError(null)
+      }
       return next
     } catch (err) {
       setStatus(null)
@@ -114,7 +121,7 @@ export function useOracleIntegration() {
       tnsAdminPath: form.tnsAdminPath.trim(),
       tnsFileName: form.tnsFileName.trim() || 'tnsnames.ora',
       tnsAlias: form.tnsAlias.trim(),
-      oracleClientLibDir: form.oracleClientLibDir.trim(),
+      oracleClientLibDir: normalizeOracleClientDir(form.oracleClientLibDir),
       expectedHost: form.expectedHost.trim(),
       expectedPort: form.expectedPort ? Number.parseInt(form.expectedPort, 10) || null : null,
       expectedDatabase: form.expectedDatabase.trim(),
@@ -127,7 +134,7 @@ export function useOracleIntegration() {
     () => ({
       username: form.username.trim(),
       tnsAlias: form.tnsAlias.trim(),
-      oracleClientLibDir: form.oracleClientLibDir.trim(),
+      oracleClientLibDir: normalizeOracleClientDir(form.oracleClientLibDir),
       tnsAdminPath: form.tnsAdminPath.trim(),
       tnsFileName: form.tnsFileName.trim() || 'tnsnames.ora',
     }),
@@ -136,11 +143,25 @@ export function useOracleIntegration() {
 
   /** Valida o caminho do Oracle Client informado no navegador via API local. */
   const validateClientPath = useCallback(async (): Promise<ClientValidationResult> => {
-    const libDir = form.oracleClientLibDir.trim()
+    const libDir = normalizeOracleClientDir(form.oracleClientLibDir)
+    if (libDir !== form.oracleClientLibDir.trim()) {
+      updateField('oracleClientLibDir', libDir)
+    }
     if (!libDir) {
       const result = {
         ok: false,
         message: 'Informe o caminho do Oracle Client (pasta onde está a OCI.DLL).',
+      }
+      setClientValidation(result)
+      setError(result.message)
+      return result
+    }
+    if (apiReachable === false) {
+      const result = {
+        ok: false,
+        message:
+          'API local indisponível. Execute npm run dev:server e use http://localhost:5173 para validar a OCI.DLL.',
+        libDir,
       }
       setClientValidation(result)
       setError(result.message)
@@ -182,7 +203,7 @@ export function useOracleIntegration() {
     } finally {
       setBusy(false)
     }
-  }, [form.oracleClientLibDir, form.tnsAdminPath, refreshStatus, toPayload])
+  }, [apiReachable, form.oracleClientLibDir, form.tnsAdminPath, refreshStatus, toPayload, updateField])
 
   const selectAlias = useCallback(
     (aliasName: string, details?: TnsAliasInfo[]) => {
@@ -199,12 +220,12 @@ export function useOracleIntegration() {
     [aliasDetails, updateField],
   )
 
-  /** Importa tnsnames.ora pelo navegador, envia à API e lista os aliases Database. */
+  /** Importa tnsnames.ora pelo navegador; se a API falhar, parseia localmente. */
   const importTnsFile = useCallback(
     async (file: File): Promise<boolean> => {
       setBusy(true)
       setError(null)
-      setProgress('Importando arquivo TNS...')
+      setProgress('Lendo arquivo TNS...')
       try {
         const content = await file.text()
         const localAliases = parseTnsNames(content)
@@ -212,36 +233,54 @@ export function useOracleIntegration() {
           throw new Error('Nenhum alias TNS encontrado no arquivo. Verifique se é um tnsnames.ora válido.')
         }
 
-        const result = await oracleApi.importTns(content, file.name || 'tnsnames.ora')
-        setAliasDetails(result.aliases)
-        setAliases(result.aliasNames)
-        setTnsImported(true)
-        setTnsFileLabel(file.name || 'tnsnames.ora')
-        updateField('tnsAdminPath', result.tnsAdminPath)
-        updateField('tnsFileName', result.tnsFileName)
-
-        const preferred =
-          result.aliases.find((item) => item.alias.toUpperCase() === form.tnsAlias.toUpperCase()) ||
-          result.aliases[0]
-        selectAlias(preferred.alias, result.aliases)
-        setProgress(null)
-        await refreshStatus()
-        return true
-      } catch (err) {
-        // Fallback: parse local se API falhar — ainda assim exige API para conectar
-        try {
-          const content = await file.text()
-          const localAliases = parseTnsNames(content)
-          if (localAliases.length > 0 && err instanceof Error && /API/i.test(err.message)) {
-            setAliasDetails(localAliases)
-            setAliases(localAliases.map((item) => item.alias))
-            setTnsImported(false)
-            setTnsFileLabel(`${file.name} (somente local — envie à API para conectar)`)
-            selectAlias(localAliases[0].alias, localAliases)
-          }
-        } catch {
-          /* ignore secondary parse */
+        const applyLocal = (label: string) => {
+          setAliasDetails(localAliases)
+          setAliases(localAliases.map((item) => item.alias))
+          setTnsFileLabel(label)
+          const preferred =
+            localAliases.find((item) => item.alias.toUpperCase() === form.tnsAlias.toUpperCase()) ||
+            localAliases[0]
+          selectAlias(preferred.alias, localAliases)
         }
+
+        if (apiReachable === false) {
+          setTnsImported(true)
+          applyLocal(`${file.name} · ${localAliases.length} alias(es) (local)`)
+          setError(
+            'TNS lido no navegador. Para gravar na API e conectar ao banco, execute npm run dev:server e use http://localhost:5173.',
+          )
+          setProgress(null)
+          return true
+        }
+
+        setProgress('Enviando TNS à API...')
+        try {
+          const result = await oracleApi.importTns(content, file.name || 'tnsnames.ora')
+          setAliasDetails(result.aliases)
+          setAliases(result.aliasNames)
+          setTnsImported(true)
+          setTnsFileLabel(file.name || 'tnsnames.ora')
+          updateField('tnsAdminPath', result.tnsAdminPath)
+          updateField('tnsFileName', result.tnsFileName)
+          const preferred =
+            result.aliases.find((item) => item.alias.toUpperCase() === form.tnsAlias.toUpperCase()) ||
+            result.aliases[0]
+          selectAlias(preferred.alias, result.aliases)
+          setProgress(null)
+          await refreshStatus()
+          return true
+        } catch (apiErr) {
+          setTnsImported(true)
+          applyLocal(`${file.name} · ${localAliases.length} alias(es) (local)`)
+          setError(
+            apiErr instanceof Error
+              ? `${apiErr.message} O arquivo foi lido localmente; inicie a API local para conectar.`
+              : 'TNS lido localmente. Inicie a API local para conectar.',
+          )
+          setProgress(null)
+          return true
+        }
+      } catch (err) {
         setError(err instanceof Error ? err.message : 'Falha ao importar TNS')
         setProgress(null)
         return false
@@ -249,7 +288,7 @@ export function useOracleIntegration() {
         setBusy(false)
       }
     },
-    [form.tnsAlias, refreshStatus, selectAlias, updateField],
+    [apiReachable, form.tnsAlias, refreshStatus, selectAlias, updateField],
   )
 
   const loadAliases = useCallback(async () => {

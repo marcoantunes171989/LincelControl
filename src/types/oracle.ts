@@ -62,6 +62,8 @@ export interface OracleRuntimeStatus {
   clientVersion: string | null
   clientArchitecture: string | null
   ociDllFound: boolean | null
+  /** Presente quando a resposta vem do stub da Vercel (sem Oracle real). */
+  hostMode?: 'local' | 'vercel-stub'
   pool: { connectionsOpen: number; connectionsInUse: number } | null
   database: {
     alias: string | null

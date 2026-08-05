@@ -19,7 +19,8 @@ export function createApp() {
       credentials: true,
     }),
   )
-  app.use(express.json({ limit: '64kb' }))
+  // TNS importado pelo navegador pode ultrapassar 64kb.
+  app.use(express.json({ limit: '2mb' }))
 
   app.get('/api/health', (_req, res) => {
     res.json({
