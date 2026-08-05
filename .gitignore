@@ -25,3 +25,13 @@ dist-ssr
 
 .vercel
 .env*
+!.env.example
+
+# Dados locais da API / Oracle settings
+server/data/
+server/dist/
+!.env.example
+
+# Dados locais da API (SQLite / runtime)
+server/data/
+server/dist/

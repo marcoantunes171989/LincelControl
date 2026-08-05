@@ -1,4 +1,4 @@
-import { LayoutGrid } from 'lucide-react'
+import { Database, LayoutGrid, WandSparkles } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { ActionBar } from './components/ActionBar'
 import { ConfigurationReview } from './components/ConfigurationReview'
@@ -9,6 +9,7 @@ import { ModuleFilter } from './components/ModuleFilter'
 import { ModuleGrid } from './components/ModuleGrid'
 import { ModuleToolbar } from './components/ModuleToolbar'
 import { NfeExpertSelector } from './components/NfeExpertSelector'
+import { OracleIntegrationPage } from './components/oracle/OracleIntegrationPage'
 import { PageHeader } from './components/PageHeader'
 import { ProgressNavigation } from './components/ProgressNavigation'
 import { SqlPreview } from './components/SqlPreview'
@@ -23,10 +24,12 @@ import { countActiveByCategory, getActiveModuleLabels } from './utils/sqlGenerat
 import { ValidationSummary } from './components/ValidationSummary'
 
 type ModalKind = 'download' | 'clear' | null
+type AppView = 'generator' | 'oracle'
 
 const SELECTABLE_MODULES = MODULES.filter((module) => !module.exclusiveGroup)
 
 function App() {
+  const [view, setView] = useState<AppView>('generator')
   const {
     store,
     license,
@@ -64,9 +67,10 @@ function App() {
   }, [toastMessage])
 
   useEffect(() => {
-    document.body.classList.toggle('has-mobile-actions', isValid)
+    const showMobileActions = view === 'generator' && isValid
+    document.body.classList.toggle('has-mobile-actions', showMobileActions)
     return () => document.body.classList.remove('has-mobile-actions')
-  }, [isValid])
+  }, [isValid, view])
 
   const handleCopy = useCallback(async () => {
     if (!isValid) return
@@ -147,134 +151,171 @@ function App() {
 
   return (
     <div className="min-h-screen min-h-[100dvh] bg-slate-50">
-      <PageHeader
-        status={formStatus}
-        onClear={() => setActiveModal('clear')}
-        onCopy={handleCopy}
-        onDownload={() => setActiveModal('download')}
-        copyDisabled={!isValid}
-        downloadDisabled={!isValid}
-      />
-      <ProgressNavigation completedSteps={completedSteps} />
-
-      <main className="mx-auto max-w-[1600px] px-3 py-5 sm:px-6 sm:py-6 lg:px-8">
-        <div className="mb-6">
-          <ValidationSummary errors={errors} />
+      <nav className="border-b border-slate-200 bg-white" aria-label="Navegação principal">
+        <div className="mx-auto flex max-w-[1600px] flex-wrap items-center gap-2 px-3 py-2 sm:px-6 lg:px-8">
+          <button
+            type="button"
+            onClick={() => setView('generator')}
+            className={`inline-flex min-h-11 items-center gap-2 rounded-lg px-3 text-sm font-semibold transition ${
+              view === 'generator'
+                ? 'bg-blue-50 text-blue-700'
+                : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+            }`}
+            aria-current={view === 'generator' ? 'page' : undefined}
+          >
+            <WandSparkles size={16} aria-hidden="true" />
+            Gerador SQL
+          </button>
+          <button
+            type="button"
+            onClick={() => setView('oracle')}
+            className={`inline-flex min-h-11 items-center gap-2 rounded-lg px-3 text-sm font-semibold transition ${
+              view === 'oracle'
+                ? 'bg-blue-50 text-blue-700'
+                : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+            }`}
+            aria-current={view === 'oracle' ? 'page' : undefined}
+          >
+            <Database size={16} aria-hidden="true" />
+            Integração Oracle
+          </button>
         </div>
+      </nav>
 
-        <div className="grid grid-cols-1 gap-5 md:gap-6 lg:grid-cols-[minmax(0,58fr)_minmax(0,42fr)] lg:items-start">
-          <div className="flex flex-col gap-6">
-            <StoreInformationCard
-              store={store}
-              errors={errors}
-              onChange={updateStoreField}
-              inscricaoEstadual={inscricaoEstadual}
-              isLoadingCnpjInfo={isLoadingCnpjInfo}
-            />
-            <LicensePdvCard license={license} errors={errors} onChange={updateLicenseField} />
+      {view === 'generator' ? (
+        <>
+          <PageHeader
+            status={formStatus}
+            onClear={() => setActiveModal('clear')}
+            onCopy={handleCopy}
+            onDownload={() => setActiveModal('download')}
+            copyDisabled={!isValid}
+            downloadDisabled={!isValid}
+          />
+          <ProgressNavigation completedSteps={completedSteps} />
 
-            <section
-              id="modulos"
-              className="scroll-mt-24 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6"
-              aria-labelledby="modules-heading"
-            >
-              <div className="mb-1">
-                <h2 id="modules-heading" className="flex items-center gap-2 text-lg font-semibold text-slate-900">
-                  <LayoutGrid size={18} className="text-blue-600" aria-hidden="true" />
-                  Módulos e integrações
-                </h2>
-                <p className="mt-1 text-sm text-slate-500">
-                  Cada módulo sempre entra no script como <code className="font-mono">'S'</code> (ativo) ou{' '}
-                  <code className="font-mono">'N'</code> (inativo).
-                </p>
+          <main className="mx-auto max-w-[1600px] px-3 py-5 sm:px-6 sm:py-6 lg:px-8">
+            <div className="mb-6">
+              <ValidationSummary errors={errors} />
+            </div>
+
+            <div className="grid grid-cols-1 gap-5 md:gap-6 lg:grid-cols-[minmax(0,58fr)_minmax(0,42fr)] lg:items-start">
+              <div className="flex flex-col gap-6">
+                <StoreInformationCard
+                  store={store}
+                  errors={errors}
+                  onChange={updateStoreField}
+                  inscricaoEstadual={inscricaoEstadual}
+                  isLoadingCnpjInfo={isLoadingCnpjInfo}
+                />
+                <LicensePdvCard license={license} errors={errors} onChange={updateLicenseField} />
+
+                <section
+                  id="modulos"
+                  className="scroll-mt-24 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6"
+                  aria-labelledby="modules-heading"
+                >
+                  <div className="mb-1">
+                    <h2 id="modules-heading" className="flex items-center gap-2 text-lg font-semibold text-slate-900">
+                      <LayoutGrid size={18} className="text-blue-600" aria-hidden="true" />
+                      Módulos e integrações
+                    </h2>
+                    <p className="mt-1 text-sm text-slate-500">
+                      Cada módulo sempre entra no script como <code className="font-mono">'S'</code> (ativo) ou{' '}
+                      <code className="font-mono">'N'</code> (inativo).
+                    </p>
+                  </div>
+
+                  <div className="mt-4">
+                    <NfeExpertSelector value={nfeExpertMode} onChange={setNfeExpertMode} />
+                  </div>
+
+                  <div className="mt-4">
+                    <ModuleToolbar
+                      totalFields={totalModulesCount}
+                      selectedCount={selectedModulesCount}
+                      activeCount={activeModulesCount}
+                      inactiveCount={inactiveModulesCount}
+                      query={moduleQuery}
+                      onQueryChange={setModuleQuery}
+                      onSelectAll={selectAllModules}
+                      onDeselectAll={deselectAllModules}
+                    />
+                  </div>
+
+                  <div className="mt-4">
+                    <ModuleFilter
+                      status={moduleStatusFilter}
+                      onStatusChange={setModuleStatusFilter}
+                      category={moduleCategory}
+                      onCategoryChange={setModuleCategory}
+                      resultCount={filteredModules.length}
+                    />
+                  </div>
+
+                  <div className="mt-3">
+                    <ModuleGrid modules={filteredModules} moduleState={modules} onToggle={toggleModule} />
+                  </div>
+                </section>
               </div>
 
-              <div className="mt-4">
-                <NfeExpertSelector value={nfeExpertMode} onChange={setNfeExpertMode} />
-              </div>
-
-              <div className="mt-4">
-                <ModuleToolbar
-                  totalFields={totalModulesCount}
-                  selectedCount={selectedModulesCount}
-                  activeCount={activeModulesCount}
-                  inactiveCount={inactiveModulesCount}
-                  query={moduleQuery}
-                  onQueryChange={setModuleQuery}
-                  onSelectAll={selectAllModules}
-                  onDeselectAll={deselectAllModules}
+              <div className="flex flex-col gap-4 md:gap-6 lg:sticky lg:top-20">
+                <ConfigurationReview
+                  store={store}
+                  license={license}
+                  activeModulesCount={activeModulesCount}
+                  integrationsActiveCount={integrationsActiveCount}
+                  activeModuleLabels={activeModuleLabels}
+                  pendingIssuesCount={pendingIssuesCount}
+                />
+                <SqlPreview
+                  sql={sql}
+                  isValid={isValid}
+                  totalModules={totalModulesCount}
+                  activeModules={activeModulesCount}
+                  inactiveModules={inactiveModulesCount}
+                  fileName={fileName}
+                  onCopy={handleCopy}
+                />
+                <ActionBar
+                  disabled={!isValid}
+                  onCopy={handleCopy}
+                  onRequestDownload={() => setActiveModal('download')}
+                  onRestoreExample={restoreExample}
+                  onRequestClear={() => setActiveModal('clear')}
                 />
               </div>
+            </div>
+          </main>
 
-              <div className="mt-4">
-                <ModuleFilter
-                  status={moduleStatusFilter}
-                  onStatusChange={setModuleStatusFilter}
-                  category={moduleCategory}
-                  onCategoryChange={setModuleCategory}
-                  resultCount={filteredModules.length}
-                />
-              </div>
+          <MobileActionBar
+            disabled={!isValid}
+            onCopy={handleCopy}
+            onDownload={() => setActiveModal('download')}
+          />
 
-              <div className="mt-3">
-                <ModuleGrid modules={filteredModules} moduleState={modules} onToggle={toggleModule} />
-              </div>
-            </section>
-          </div>
+          <ConfirmationModal
+            open={activeModal === 'download'}
+            title={`Confirma a geração do UPDATE da loja ${store.codLoja || '—'}?`}
+            description="O arquivo .sql será baixado para o seu computador. Revise os dados antes de executar no banco."
+            confirmLabel="Baixar script"
+            onConfirm={handleConfirmDownload}
+            onCancel={() => setActiveModal(null)}
+          />
 
-          <div className="flex flex-col gap-4 md:gap-6 lg:sticky lg:top-20">
-            <ConfigurationReview
-              store={store}
-              license={license}
-              activeModulesCount={activeModulesCount}
-              integrationsActiveCount={integrationsActiveCount}
-              activeModuleLabels={activeModuleLabels}
-              pendingIssuesCount={pendingIssuesCount}
-            />
-            <SqlPreview
-              sql={sql}
-              isValid={isValid}
-              totalModules={totalModulesCount}
-              activeModules={activeModulesCount}
-              inactiveModules={inactiveModulesCount}
-              fileName={fileName}
-              onCopy={handleCopy}
-            />
-            <ActionBar
-              disabled={!isValid}
-              onCopy={handleCopy}
-              onRequestDownload={() => setActiveModal('download')}
-              onRestoreExample={restoreExample}
-              onRequestClear={() => setActiveModal('clear')}
-            />
-          </div>
-        </div>
-      </main>
-
-      <MobileActionBar
-        disabled={!isValid}
-        onCopy={handleCopy}
-        onDownload={() => setActiveModal('download')}
-      />
-
-      <ConfirmationModal
-        open={activeModal === 'download'}
-        title={`Confirma a geração do UPDATE da loja ${store.codLoja || '—'}?`}
-        description="O arquivo .sql será baixado para o seu computador. Revise os dados antes de executar no banco."
-        confirmLabel="Baixar script"
-        onConfirm={handleConfirmDownload}
-        onCancel={() => setActiveModal(null)}
-      />
-
-      <ConfirmationModal
-        open={activeModal === 'clear'}
-        title="Limpar formulário?"
-        description="Todos os dados preenchidos serão perdidos e os módulos serão desmarcados."
-        confirmLabel="Limpar"
-        tone="danger"
-        onConfirm={handleConfirmClear}
-        onCancel={() => setActiveModal(null)}
-      />
+          <ConfirmationModal
+            open={activeModal === 'clear'}
+            title="Limpar formulário?"
+            description="Todos os dados preenchidos serão perdidos e os módulos serão desmarcados."
+            confirmLabel="Limpar"
+            tone="danger"
+            onConfirm={handleConfirmClear}
+            onCancel={() => setActiveModal(null)}
+          />
+        </>
+      ) : (
+        <OracleIntegrationPage onToast={setToastMessage} />
+      )}
 
       <Toast message={toastMessage} />
     </div>

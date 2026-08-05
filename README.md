@@ -1,88 +1,219 @@
-# Gerador de Update — TAB_LOJA
+# LicenControl — Controle de Licenças
 
-Aplicação **exclusivamente front-end** que gera, em tempo real, um script SQL de `UPDATE` para a tabela `TAB_LOJA`, a partir dos dados da loja, da licença/PDVs e dos módulos selecionados.
+Aplicação para geração de scripts `UPDATE TAB_LOJA` e integração opcional com Oracle Database do cliente via **Oracle Client + TNS**.
 
-Não existe back-end próprio, banco de dados ou execução do SQL gerado. A única chamada de rede é a consulta pública de Inscrição Estadual pelo CNPJ (veja [Consulta de Inscrição Estadual](#consulta-de-inscrição-estadual)). O script deve ser revisado e executado manualmente pela equipe responsável.
+## Arquitetura
 
-## Tecnologias utilizadas
+```text
+Frontend (React + Vite)
+        |
+        v
+API interna (Node.js + Express)   ← pasta server/
+        |
+        v
+Módulo Oracle / Pool (node-oracledb Thick)
+        |
+        v
+Oracle Client + tnsnames.ora
+        |
+        v
+Banco Oracle do cliente
+```
 
-- React 19 + TypeScript
-- Vite 8
-- Tailwind CSS 4
-- React Hook Form / Zod (disponíveis para validação de formulários)
-- Vitest + Testing Library (testes unitários)
-- lucide-react (ícones)
-- APIs nativas do navegador: `navigator.clipboard`, `Blob`, `URL.createObjectURL`
+O navegador **nunca** se conecta diretamente ao Oracle. Credenciais, caminhos sensíveis e SQL interno ficam no backend.
 
-## Como instalar
+## Tecnologias
+
+| Camada | Stack |
+|--------|--------|
+| Frontend | React 19, TypeScript, Vite 8, Tailwind CSS 4, Vitest |
+| Backend | Node.js 18+, Express 5, `oracledb`, Zod, Helmet, CORS, rate-limit |
+| Persistência de config | JSON (`server/data/oracle_connection_settings.json`) — **sem senha** |
+
+## Pré-requisitos
+
+- Node.js **18+** (recomendado 20 LTS)
+- Arquitetura do Node compatível com o Oracle Client (**x64** com Instant Client 64-bit)
+- Oracle Instant Client (ou Oracle Client completo) instalado na máquina da API
+- Arquivo `tnsnames.ora` acessível (local ou UNC)
+- Permissão de leitura no diretório de rede (serviço Windows pode não ver unidades mapeadas como `Z:\` — prefira UNC)
+
+### Oracle Client / OCI.DLL
+
+1. Instale o Instant Client (ex.: `C:\Oracle\instantclient_19_25`)
+2. Confirme a presença de `OCI.DLL` nesse diretório
+3. Defina `ORACLE_CLIENT_LIB_DIR` apontando para o diretório
+4. Defina `ORACLE_TNS_ADMIN` (ou configure na tela) para o diretório do `tnsnames.ora`
+
+### Caminho UNC
+
+```text
+\\SERVIDOR-ARQUIVOS\Oracle\Network\Admin
+```
+
+O processo da API precisa de permissão de leitura nessa pasta.
+
+## Instalação
 
 ```bash
 npm install
+npm install --prefix server
 ```
 
-## Como executar em desenvolvimento
+Copie o exemplo de ambiente:
+
+```bash
+copy .env.example .env
+```
+
+Ajuste pelo menos:
+
+- `ORACLE_CLIENT_LIB_DIR`
+- `ORACLE_TNS_ADMIN` (opcional no .env se for configurar pela UI)
+- `ADMIN_API_KEY` (obrigatório em produção)
+- `CORS_ORIGIN`
+
+## Execução local
+
+Terminal 1 — API:
+
+```bash
+npm run dev:server
+```
+
+Terminal 2 — Frontend:
 
 ```bash
 npm run dev
 ```
 
-## Como executar os testes
+- Frontend: `http://localhost:5173`
+- API: `http://localhost:8787`
+- Em desenvolvimento, o Vite faz proxy de `/api` → `8787`
+
+Produção da API:
 
 ```bash
-npm run test
+npm run build:server
+npm run start:server
 ```
 
-## Como gerar o build de produção
+## Integração Oracle (UI)
+
+1. Abra **Integração Oracle** na navegação superior
+2. Informe o caminho do Oracle Client e valide (`OCI.DLL`)
+3. Informe o diretório TNS (preferencialmente UNC) e liste os aliases
+4. Selecione o alias; HOST/PORT/SERVICE_NAME são extraídos automaticamente
+5. Confira os valores esperados e informe usuário/senha
+6. Clique em **Validar credenciais** (etapas: Client → TNS → DNS → TCP → TNSPING → login → DUAL)
+7. Use o interruptor **Desconectado / Conectado** para criar ou fechar o pool
+
+Ao desligar o interruptor:
+
+- o pool é fechado
+- as configurações permanecem
+- a senha fica só em memória enquanto o processo da API estiver ativo
+- após reiniciar a API, a senha precisa ser informada novamente
+
+### Estados
+
+Não configurado · Validando · Conectando · Conectado · Desconectando · Desconectado · Erro · Senha necessária · Oracle Client indisponível · TNS indisponível · Banco inacessível
+
+## Endpoints internos
+
+Todos sob `/api/oracle` (exceto health geral em `/api/health`).
+
+| Método | Rota | Permissão |
+|--------|------|-----------|
+| GET | `/api/oracle/health` | `oracle.view_status` |
+| GET | `/api/oracle/status` | `oracle.view_status` |
+| GET/POST | `/api/oracle/configuration` | `oracle.configure` |
+| GET/POST | `/api/oracle/tns-aliases` | `oracle.configure` |
+| POST | `/api/oracle/validate` | `oracle.validate` |
+| POST | `/api/oracle/connect` | `oracle.connect` |
+| POST | `/api/oracle/disconnect` | `oracle.disconnect` |
+| POST | `/api/oracle/toggle` | connect + disconnect |
+| POST | `/api/oracle/query` | `oracle.query_dashboard` |
+
+Autenticação: header `X-Admin-Api-Key` (ou `Authorization: Bearer <key>`). Em desenvolvimento, se `ADMIN_API_KEY` estiver vazia, o acesso local é liberado.
+
+A senha **nunca** é retornada nas respostas.
+
+## Consultas de dashboard (catálogo)
+
+O frontend envia apenas:
+
+```json
+{
+  "queryId": "connection-info",
+  "binds": {}
+}
+```
+
+Consultas genéricas já disponíveis:
+
+- `connection-info`
+- `database-datetime`
+- `accessible-tables-count`
+- `schema-tables` (`offset`, `limit`)
+- `table-columns` (`tableName`, `offset`, `limit`)
+
+### Como cadastrar uma nova consulta
+
+Edite `server/src/oracle/queryCatalog.ts`:
+
+```javascript
+'licencas-ativas': {
+  description: 'Licenças ativas',
+  sql: `SELECT ... FROM <tabela_real_do_cliente> WHERE ...`,
+  allowedBinds: ['offset', 'limit'],
+  maxRows: 100,
+}
+```
+
+Não invente nomes de tabelas do cliente. Só adicione após mapear o schema real. SQL livre do frontend permanece desabilitado (`ORACLE_ALLOW_RAW_SQL=false`).
+
+## Segurança
+
+- Senha Oracle somente em memória no processo da API
+- Configuração persistida sem senha (SQLite)
+- Rate limit nas rotas de validação/conexão
+- Proteção contra tentativas repetidas de senha
+- Helmet + CORS restrito
+- Erros sanitizados (sem stack trace em produção)
+- Logs com mascaramento de segredos
+- Usuário Oracle recomendado: apenas `CREATE SESSION` + `SELECT` necessário
+
+## Diagnóstico de erros comuns
+
+| Código | Significado |
+|--------|-------------|
+| DPI-1047 | Oracle Client / OCI.DLL ausente ou arquitetura incompatível |
+| ORA-01017 | Usuário/senha inválidos |
+| ORA-12154 | Alias TNS não resolvido |
+| ORA-12514 | SERVICE_NAME desconhecido no listener |
+| ORA-12541 | Listener indisponível |
+| ORA-28000 | Conta bloqueada |
+| ORA-28001 | Senha expirada |
+
+## Gerador SQL (funcionalidade original)
+
+A aba **Gerador SQL** continua 100% front-end para montar o `UPDATE TAB_LOJA`. O script não é executado automaticamente no Oracle — revise antes de rodar manualmente, ou use a integração Oracle apenas para consultas de catálogo/dashboard.
+
+## Scripts
 
 ```bash
-npm run build
+npm run dev            # frontend
+npm run dev:server     # API Oracle
+npm run test           # testes web + server
+npm run lint           # oxlint web + server
+npm run build          # build web + server
 ```
 
-## Como funciona a geração do SQL
+## Desativar a integração Oracle
 
-Toda alteração em qualquer campo — dados da loja, licença/PDVs, módulos ou modalidade NF-e Expert — recalcula o script `UPDATE TAB_LOJA` instantaneamente (`src/utils/sqlGenerator.ts`), sem necessidade de um botão "Gerar". O script é composto por:
+1. Desligue o interruptor na UI, ou
+2. Não inicie a API (`server/`), ou
+3. Remova/ignore as variáveis `ORACLE_*`
 
-- Um cabeçalho comentado com o código e a descrição da loja (somente identificação, sem quebras de linha), o CNPJ e a Inscrição Estadual.
-- Um `SET` com os 62 campos de módulos/integrações (na ordem do catálogo) seguidos dos campos de licença, PDVs e CNPJ.
-- Uma cláusula `WHERE TAB_LOJA.COD_LOJA = <código>;`.
-
-Os campos **Descrição** e **Inscrição Estadual** são usados somente no comentário do cabeçalho — nunca são incluídos no `SET` (não existe coluna correspondente na TAB_LOJA).
-
-## Consulta de Inscrição Estadual
-
-Ao completar os 14 dígitos do CNPJ, a aplicação consulta automaticamente a API pública [CNPJ.ws](https://publica.cnpj.ws/) (`GET https://publica.cnpj.ws/cnpj/<cnpj>`) para localizar a(s) Inscrição(ões) Estadual(is) da empresa (`src/utils/cnpjLookup.ts`). O campo na tela é somente leitura:
-
-- Enquanto consulta: exibe "Consultando...".
-- Encontrada: exibe `UF: número` (múltiplas inscrições são separadas por `|`).
-- Não encontrada ou falha na consulta: exibe **ISENTO**.
-
-Essa é a única chamada de rede da aplicação — envia apenas o CNPJ digitado (informação pública) para a API de consulta, sem enviar código da loja, licença ou o script gerado.
-
-## Regra de módulos S/N
-
-Os 62 módulos/integrações do catálogo (`src/data/modules.ts`, seções **Módulo** e **Integração**) **sempre** aparecem no `SET`, nunca são omitidos:
-
-- Módulo selecionado → `'S'`
-- Módulo desmarcado → `'N'`
-
-Isso evita que um módulo antes habilitado permaneça ativo no banco por esquecimento.
-
-## Regra de exclusividade NF-e Expert
-
-Os campos `mod_gestor_doc_fisc` (Embedded) e `MOD_NFE` (Partner) são mutuamente exclusivos e controlados por um seletor único ("Modalidade NF-e Expert"), nunca por checkboxes independentes:
-
-| Modalidade | mod_gestor_doc_fisc | MOD_NFE |
-| ---------- | -------------------- | ------- |
-| Nenhuma    | `N`                   | `N`     |
-| Embedded   | `S`                   | `N`     |
-| Partner    | `N`                   | `S`     |
-
-> O nome físico da coluna no banco é `mod_gestor_doc_fisc` (minúsculo), mas o script SQL gerado sempre exibe os nomes de campo em maiúsculas — SQL é case-insensitive para identificadores, então o `UPDATE` continua correto.
-
-## Nenhuma informação é salva
-
-A aplicação não utiliza `localStorage`, `sessionStorage`, `IndexedDB`, cookies ou banco de dados para persistir dados. Todo o estado vive apenas na memória do React — ao atualizar a página, os valores retornam ao estado inicial em branco. A única exceção é a consulta de Inscrição Estadual descrita acima, que envia o CNPJ para a API pública CNPJ.ws e não persiste nada além do resultado em memória.
-
-## Aviso
-
-O script gerado **não é executado automaticamente**. Revise cuidadosamente todos os campos antes de rodar o `UPDATE` em qualquer banco de dados de produção.
+A API trata falhas Oracle de forma isolada: indisponibilidade do banco **não** derruba o restante do Controle de Licenças.

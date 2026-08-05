@@ -5,11 +5,19 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
-    "lint": "oxlint",
-    "test": "vitest run",
+    "dev:web": "vite",
+    "dev:server": "npm run dev --prefix server",
+    "dev:all": "npm run dev:server",
+    "build": "tsc -b && vite build && npm run build --prefix server",
+    "build:web": "tsc -b && vite build",
+    "build:server": "npm run build --prefix server",
+    "lint": "oxlint && npm run lint --prefix server",
+    "test": "vitest run && npm run test --prefix server",
+    "test:web": "vitest run",
+    "test:server": "npm run test --prefix server",
     "test:watch": "vitest",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "start:server": "npm run start --prefix server"
   },
   "dependencies": {
     "lucide-react": "^1.25.0",
@@ -32,5 +40,8 @@
     "typescript": "~6.0.2",
     "vite": "^8.1.1",
     "vitest": "^4.1.10"
+  },
+  "engines": {
+    "node": ">=18.0.0"
   }
 }
