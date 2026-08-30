@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { authenticate, requirePermission } from '../middleware/auth.js'
 import { passwordAttemptGuard, resetPasswordAttempts, validationRateLimit } from '../middleware/rateLimit.js'
 import { initializeOracleClient } from '../oracle/client.js'
+import { applyLicenseUpdate, previewLicenseUpdate } from '../oracle/licenseUpdate.js'
 import { queryCatalog } from '../oracle/queryCatalog.js'
 import { oracleService } from '../oracle/service.js'
 import { findTnsAlias, parseTnsNames } from '../oracle/tnsParser.js'
@@ -336,3 +337,35 @@ oracleRouter.post('/query', requirePermission('oracle.query_dashboard'), async (
     next(error)
   }
 })
+
+/**
+ * Aplicação de licença na TAB_LOJA — endpoints dedicados (nunca SQL livre).
+ * Preview revela dados operacionais da base, então também exige permissão administrativa.
+ */
+oracleRouter.post(
+  '/license-update/preview',
+  requirePermission('oracle.apply_license'),
+  validationRateLimit,
+  async (req, res, next) => {
+    try {
+      const result = await previewLicenseUpdate(req.body, req.actor)
+      res.json(result)
+    } catch (error) {
+      next(error)
+    }
+  },
+)
+
+oracleRouter.post(
+  '/license-update/apply',
+  requirePermission('oracle.apply_license'),
+  validationRateLimit,
+  async (req, res, next) => {
+    try {
+      const result = await applyLicenseUpdate(req.body, req.actor)
+      res.json(result)
+    } catch (error) {
+      next(error)
+    }
+  },
+)

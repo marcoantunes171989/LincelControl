@@ -430,7 +430,7 @@ export function OracleIntegrationPage({ onToast }: OracleIntegrationPageProps) {
               label="TNS_ADMIN"
               value={form.tnsAdminPath}
               onChange={(value) => updateField('tnsAdminPath', value)}
-              placeholder="C:\oracle\app\product\11.2.0\client_1\network\admin"
+              placeholder="C:\\oracle\\app\\product\\11.2.0\\client_1\\network\\admin"
               required
             />
             <SettingsInput

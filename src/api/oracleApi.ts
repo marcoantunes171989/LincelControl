@@ -1,4 +1,8 @@
 import type {
+  LicenseUpdateApplyPayload,
+  LicenseUpdateApplyResponse,
+  LicenseUpdatePayload,
+  LicenseUpdatePreviewResponse,
   OracleConfigurationPayload,
   OracleRuntimeStatus,
   OracleValidateResponse,
@@ -199,4 +203,15 @@ export const oracleApi = {
     request<{ service: string; status: string; configured: boolean; connected: boolean; checkedAt: string }>(
       '/api/oracle/health',
     ),
+  // Aplicação de licença na TAB_LOJA — endpoints dedicados, nunca SQL livre.
+  previewLicenseUpdate: (payload: LicenseUpdatePayload) =>
+    request<LicenseUpdatePreviewResponse>('/api/oracle/license-update/preview', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+  applyLicenseUpdate: (payload: LicenseUpdateApplyPayload) =>
+    request<LicenseUpdateApplyResponse>('/api/oracle/license-update/apply', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
 }

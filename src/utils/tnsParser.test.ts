@@ -20,4 +20,29 @@ describe('parseTnsNames (frontend)', () => {
       serviceName: 'ORCL',
     })
   })
+
+  it('fixture de homologação: ORCL / 192.168.0.238 / 1521 / orcl.intersoul', () => {
+    const HOMOLOGACAO_TNS = `
+ORCL =
+(DESCRIPTION =
+  (ADDRESS =
+    (PROTOCOL = TCP)
+    (HOST = 192.168.0.238)
+    (PORT = 1521)
+  )
+  (CONNECT_DATA =
+    (SERVER = DEDICATED)
+    (SERVICE_NAME = orcl.intersoul)
+  )
+)
+`
+    const alias = findTnsAlias(HOMOLOGACAO_TNS, 'ORCL')
+    expect(alias).toMatchObject({
+      alias: 'ORCL',
+      hosts: ['192.168.0.238'],
+      ports: [1521],
+      serviceName: 'orcl.intersoul',
+      sid: null,
+    })
+  })
 })

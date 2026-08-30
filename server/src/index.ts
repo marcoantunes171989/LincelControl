@@ -16,8 +16,9 @@ async function main() {
   }
 
   const app = createApp()
-  const server = app.listen(env.port, () => {
+  const server = app.listen(env.port, env.host, () => {
     logger.info('API LicenControl iniciada', {
+      host: env.host,
       port: env.port,
       corsOrigin: env.corsOrigin,
       nodeEnv: env.nodeEnv,
