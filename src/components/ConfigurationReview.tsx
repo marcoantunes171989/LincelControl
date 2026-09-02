@@ -41,7 +41,7 @@ export function ConfigurationReview({
       className="scroll-mt-24 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6"
       aria-labelledby="review-heading"
     >
-      <h2 id="review-heading" className="flex items-center gap-2 text-lg font-semibold text-slate-900">
+      <h2 id="review-heading" className="flex items-center gap-2 text-base font-semibold text-slate-900">
         <ClipboardList size={18} className="text-blue-600" aria-hidden="true" />
         Resumo da configuração
       </h2>

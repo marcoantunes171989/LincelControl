@@ -26,19 +26,19 @@ export function ModuleToolbar({
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
         <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
           <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">Campos</p>
-          <p className="text-lg font-semibold tabular-nums text-slate-900">{totalFields}</p>
+          <p className="text-base font-semibold tabular-nums text-slate-900">{totalFields}</p>
         </div>
         <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
           <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">Selecionados</p>
-          <p className="text-lg font-semibold tabular-nums text-slate-900">{selectedCount}</p>
+          <p className="text-base font-semibold tabular-nums text-slate-900">{selectedCount}</p>
         </div>
         <div className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2">
           <p className="text-[10px] font-semibold uppercase tracking-wide text-blue-500">Ativos (S)</p>
-          <p className="text-lg font-semibold tabular-nums text-blue-700">{activeCount}</p>
+          <p className="text-base font-semibold tabular-nums text-blue-700">{activeCount}</p>
         </div>
         <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
           <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">Inativos (N)</p>
-          <p className="text-lg font-semibold tabular-nums text-slate-600">{inactiveCount}</p>
+          <p className="text-base font-semibold tabular-nums text-slate-600">{inactiveCount}</p>
         </div>
       </div>
 

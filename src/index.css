@@ -2,6 +2,10 @@
 
 :root {
   color-scheme: light;
+  /* Altura de conteúdo da MobileTabBar (sem contar env(safe-area-inset-bottom),
+     que ela já soma sozinha via padding) — usada para empilhar a
+     MobileActionBar por cima dela sem sobrepor nem deixar buraco. */
+  --mobile-tabbar-h: 3.75rem;
 }
 
 html {
@@ -21,10 +25,18 @@ body {
 }
 
 @media (max-width: 1023px) {
-  /* MobileActionBar agora tem 2 linhas (Copiar/Baixar + Aplicar no Oracle) — o
-     espaço reservado precisa cobrir as duas, senão o fim da página fica coberto. */
+  /* A MobileTabBar (navegação Gerador/Oracle) fica sempre visível — reserva
+     espaço pra ela em toda a largura < lg, nas duas telas. */
+  body {
+    padding-bottom: calc(var(--mobile-tabbar-h) + env(safe-area-inset-bottom) + 0.75rem);
+  }
+
+  /* Na tela do Gerador, a MobileActionBar (Copiar/Baixar + Aplicar) fica
+     empilhada por cima da MobileTabBar — soma a altura das duas linhas dela
+     (2 botões de 2.75rem + gap + padding do container = 7.5rem) à altura já
+     reservada para a tab bar. */
   body.has-mobile-actions {
-    padding-bottom: calc(8rem + env(safe-area-inset-bottom));
+    padding-bottom: calc(var(--mobile-tabbar-h) + env(safe-area-inset-bottom) + 7.5rem);
   }
 }
 

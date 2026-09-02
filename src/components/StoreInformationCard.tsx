@@ -25,7 +25,7 @@ export function StoreInformationCard({
       aria-labelledby="store-info-heading"
     >
       <div className="mb-1">
-        <h2 id="store-info-heading" className="flex items-center gap-2 text-lg font-semibold text-slate-900">
+        <h2 id="store-info-heading" className="flex items-center gap-2 text-base font-semibold text-slate-900">
           <Store size={18} className="text-blue-600" aria-hidden="true" />
           Informações da loja
         </h2>

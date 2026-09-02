@@ -21,7 +21,8 @@ export function MobileActionBar({
 
   return (
     <div
-      className="fixed inset-x-0 bottom-0 z-40 border-t border-slate-200 bg-white/95 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] shadow-[0_-4px_20px_rgba(15,23,42,0.08)] backdrop-blur lg:hidden"
+      className="fixed inset-x-0 z-30 border-t border-slate-200 bg-white/95 p-3 shadow-[0_-4px_20px_rgba(15,23,42,0.08)] backdrop-blur lg:hidden"
+      style={{ bottom: 'calc(var(--mobile-tabbar-h) + env(safe-area-inset-bottom))' }}
       role="group"
       aria-label="Ações rápidas do script"
     >

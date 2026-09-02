@@ -115,7 +115,7 @@ export function SqlPreview({
       aria-labelledby="sql-preview-heading"
     >
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 id="sql-preview-heading" className="flex items-center gap-2 text-lg font-semibold text-slate-900">
+        <h2 id="sql-preview-heading" className="flex items-center gap-2 text-base font-semibold text-slate-900">
           <FileCode2 size={18} className="text-blue-600" aria-hidden="true" />
           Pré-visualização do script
         </h2>
@@ -147,15 +147,15 @@ export function SqlPreview({
       <div className="mt-3 grid grid-cols-3 gap-2">
         <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
           <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">Processados</p>
-          <p className="text-lg font-semibold tabular-nums text-slate-900">{totalModules}</p>
+          <p className="text-base font-semibold tabular-nums text-slate-900">{totalModules}</p>
         </div>
         <div className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2">
           <p className="text-[10px] font-semibold uppercase tracking-wide text-blue-500">Ativos</p>
-          <p className="text-lg font-semibold tabular-nums text-blue-700">{activeModules}</p>
+          <p className="text-base font-semibold tabular-nums text-blue-700">{activeModules}</p>
         </div>
         <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
           <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">Inativos</p>
-          <p className="text-lg font-semibold tabular-nums text-slate-600">{inactiveModules}</p>
+          <p className="text-base font-semibold tabular-nums text-slate-600">{inactiveModules}</p>
         </div>
       </div>
 
