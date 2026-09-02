@@ -27,56 +27,61 @@ export function ActionBar({
 }: ActionBarProps) {
   return (
     <div className="flex flex-col gap-3">
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <button
-          type="button"
-          onClick={onCopy}
-          disabled={disabled}
-          className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400"
-        >
-          <Copy size={16} aria-hidden="true" />
-          Copiar SQL
-        </button>
-        <button
-          type="button"
-          onClick={onRequestDownload}
-          disabled={disabled}
-          className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-blue-600 px-4 text-sm font-semibold text-blue-700 transition hover:bg-blue-50 disabled:cursor-not-allowed disabled:border-slate-200 disabled:text-slate-400"
-        >
-          <Download size={16} aria-hidden="true" />
-          Baixar arquivo .sql
-        </button>
-      </div>
+      {/* Copiar/Baixar/Aplicar já ficam sempre à mão na MobileActionBar fixa (< lg);
+          repeti-los aqui também duplicava os botões e a barra fixa chegava a
+          sobrepor "Limpar formulário" no fim da página. */}
+      <div className="hidden flex-col gap-3 lg:flex">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <button
+            type="button"
+            onClick={onCopy}
+            disabled={disabled}
+            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400"
+          >
+            <Copy size={16} aria-hidden="true" />
+            Copiar SQL
+          </button>
+          <button
+            type="button"
+            onClick={onRequestDownload}
+            disabled={disabled}
+            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-blue-600 px-4 text-sm font-semibold text-blue-700 transition hover:bg-blue-50 disabled:cursor-not-allowed disabled:border-slate-200 disabled:text-slate-400"
+          >
+            <Download size={16} aria-hidden="true" />
+            Baixar arquivo .sql
+          </button>
+        </div>
 
-      <div className="rounded-xl border border-emerald-200 bg-emerald-50/60 p-3">
-        <button
-          type="button"
-          onClick={onApply}
-          disabled={applyDisabled}
-          title="Atualizar diretamente no Oracle"
-          className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400"
-        >
-          {applyBusy ? (
-            <Loader2 size={16} className="animate-spin" aria-hidden="true" />
-          ) : (
-            <DatabaseZap size={16} aria-hidden="true" />
+        <div className="rounded-xl border border-emerald-200 bg-emerald-50/60 p-3">
+          <button
+            type="button"
+            onClick={onApply}
+            disabled={applyDisabled}
+            title="Atualizar diretamente no Oracle"
+            className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400"
+          >
+            {applyBusy ? (
+              <Loader2 size={16} className="animate-spin" aria-hidden="true" />
+            ) : (
+              <DatabaseZap size={16} aria-hidden="true" />
+            )}
+            Aplicar
+          </button>
+          <p className="mt-1.5 text-center text-[11px] text-emerald-800">Atualizar diretamente no Oracle</p>
+          {!oracleConnected && (
+            <div className="mt-2 flex flex-wrap items-center justify-center gap-1.5 text-xs text-amber-800">
+              <span>Conecte ao Oracle antes de aplicar.</span>
+              <button
+                type="button"
+                onClick={onConfigureOracle}
+                className="inline-flex items-center gap-1 font-semibold text-blue-700 underline-offset-2 hover:underline"
+              >
+                <Settings2 size={12} aria-hidden="true" />
+                Configurar Oracle
+              </button>
+            </div>
           )}
-          Aplicar
-        </button>
-        <p className="mt-1.5 text-center text-[11px] text-emerald-800">Atualizar diretamente no Oracle</p>
-        {!oracleConnected && (
-          <div className="mt-2 flex flex-wrap items-center justify-center gap-1.5 text-xs text-amber-800">
-            <span>Conecte ao Oracle antes de aplicar.</span>
-            <button
-              type="button"
-              onClick={onConfigureOracle}
-              className="inline-flex items-center gap-1 font-semibold text-blue-700 underline-offset-2 hover:underline"
-            >
-              <Settings2 size={12} aria-hidden="true" />
-              Configurar Oracle
-            </button>
-          </div>
-        )}
+        </div>
       </div>
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
