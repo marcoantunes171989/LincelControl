@@ -121,7 +121,7 @@ export function OracleIntegrationPage({ onToast }: OracleIntegrationPageProps) {
       <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <h2 className="flex items-center gap-2 text-lg font-semibold text-slate-900">
+            <h2 className="flex items-center gap-2 text-sm font-semibold text-slate-900">
               <Database size={18} className="text-blue-600" aria-hidden="true" />
               Integração Oracle
             </h2>
@@ -176,7 +176,7 @@ export function OracleIntegrationPage({ onToast }: OracleIntegrationPageProps) {
             <Database size={28} aria-hidden="true" />
           </div>
           <div>
-            <h3 className="text-base font-semibold text-slate-900">Oracle Logon</h3>
+            <h3 className="text-sm font-semibold text-slate-900">Oracle Logon</h3>
             <p className="text-sm text-slate-500">Importar TNS → Username / Password → OK</p>
           </div>
         </div>
@@ -378,7 +378,7 @@ export function OracleIntegrationPage({ onToast }: OracleIntegrationPageProps) {
       </section>
 
       <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
-        <h3 className="text-base font-semibold text-slate-900">Sessão</h3>
+        <h3 className="text-sm font-semibold text-slate-900">Sessão</h3>
         <dl className="mt-3 grid grid-cols-1 gap-2 text-sm sm:grid-cols-2 lg:grid-cols-4">
           <div className="rounded-lg bg-slate-50 px-3 py-2">
             <dt className="text-xs text-slate-500">Modo</dt>
@@ -413,7 +413,7 @@ export function OracleIntegrationPage({ onToast }: OracleIntegrationPageProps) {
           onClick={() => setShowAdvanced((value) => !value)}
           className="flex w-full items-center justify-between gap-2 text-left"
         >
-          <span className="flex items-center gap-2 text-base font-semibold text-slate-900">
+          <span className="flex items-center gap-2 text-sm font-semibold text-slate-900">
             <Settings2 size={17} className="text-blue-600" aria-hidden="true" />
             TNS_ADMIN (opcional)
           </span>
@@ -430,7 +430,7 @@ export function OracleIntegrationPage({ onToast }: OracleIntegrationPageProps) {
               label="TNS_ADMIN"
               value={form.tnsAdminPath}
               onChange={(value) => updateField('tnsAdminPath', value)}
-              placeholder="C:\oracle\app\product\11.2.0\client_1\network\admin"
+              placeholder="C:\\oracle\\app\\product\\11.2.0\\client_1\\network\\admin"
               required
             />
             <SettingsInput
@@ -470,7 +470,7 @@ export function OracleIntegrationPage({ onToast }: OracleIntegrationPageProps) {
       </section>
 
       <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
-        <h3 className="text-base font-semibold text-slate-900">Diagnóstico</h3>
+        <h3 className="text-sm font-semibold text-slate-900">Diagnóstico</h3>
         <p className="mt-1 text-sm text-slate-500">Etapas do logon Thin (driver, TNS, autenticação, DUAL).</p>
         <div className="mt-4">
           <DiagnosticStepList stages={stages} running={busy} />

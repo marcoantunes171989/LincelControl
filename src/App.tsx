@@ -8,7 +8,11 @@ import { MobileActionBar } from './components/MobileActionBar'
 import { ModuleFilter } from './components/ModuleFilter'
 import { ModuleGrid } from './components/ModuleGrid'
 import { ModuleToolbar } from './components/ModuleToolbar'
+import { MobileTabBar } from './components/MobileTabBar'
+import { MobileTopBar } from './components/MobileTopBar'
 import { NfeExpertSelector } from './components/NfeExpertSelector'
+import { ApplyOracleConfirmationModal } from './components/oracle/ApplyOracleConfirmationModal'
+import { ApplyResultPanel } from './components/oracle/ApplyResultPanel'
 import { OracleIntegrationPage } from './components/oracle/OracleIntegrationPage'
 import { PageHeader } from './components/PageHeader'
 import { ProgressNavigation } from './components/ProgressNavigation'
@@ -16,8 +20,10 @@ import { SqlPreview } from './components/SqlPreview'
 import { StoreInformationCard } from './components/StoreInformationCard'
 import { Toast } from './components/Toast'
 import { MODULES } from './data/modules'
+import { useOracleLicenseApply } from './hooks/useOracleLicenseApply'
 import { useSqlGenerator } from './hooks/useSqlGenerator'
 import type { FormStatus, ModuleStatusFilter } from './types'
+import type { LicenseUpdatePayload } from './types/oracle'
 import { copyToClipboard } from './utils/clipboard'
 import { downloadSqlFile } from './utils/downloadSql'
 import { countActiveByCategory, getActiveModuleLabels } from './utils/sqlGenerator'
@@ -60,11 +66,43 @@ function App() {
   const [moduleStatusFilter, setModuleStatusFilter] = useState<ModuleStatusFilter>('all')
   const [moduleCategory, setModuleCategory] = useState('all')
 
+  const {
+    oracleConnected,
+    refreshOracleStatus,
+    busy: applyBusy,
+    preview: applyPreview,
+    modalOpen: applyModalOpen,
+    error: applyError,
+    lastResult: applyResult,
+    requestPreview,
+    confirmApply,
+    cancelPreview,
+    dismissResult,
+  } = useOracleLicenseApply()
+
+  useEffect(() => {
+    if (view === 'generator') void refreshOracleStatus()
+  }, [view, refreshOracleStatus])
+
   useEffect(() => {
     if (!toastMessage) return
     const timer = window.setTimeout(() => setToastMessage(null), 3000)
     return () => window.clearTimeout(timer)
   }, [toastMessage])
+
+  useEffect(() => {
+    if (applyError) setToastMessage(applyError)
+  }, [applyError])
+
+  useEffect(() => {
+    if (applyResult) {
+      setToastMessage(
+        applyResult.changedCount > 0
+          ? 'Licença atualizada com sucesso no Oracle.'
+          : 'Nenhuma alteração necessária — a base já estava atualizada.',
+      )
+    }
+  }, [applyResult])
 
   useEffect(() => {
     const showMobileActions = view === 'generator' && isValid
@@ -88,6 +126,25 @@ function App() {
     clearForm()
     setActiveModal(null)
   }, [clearForm])
+
+  const licenseUpdatePayload: LicenseUpdatePayload = useMemo(
+    () => ({
+      store: { codLoja: store.codLoja, numCgc: store.numCgc, descricao: store.descricao },
+      license,
+      modules,
+      nfeExpertMode,
+    }),
+    [store, license, modules, nfeExpertMode],
+  )
+
+  const applyDisabled = !isValid || !oracleConnected || applyBusy
+
+  const handleApply = useCallback(() => {
+    if (applyDisabled) return
+    void requestPreview(licenseUpdatePayload)
+  }, [applyDisabled, requestPreview, licenseUpdatePayload])
+
+  const handleConfigureOracle = useCallback(() => setView('oracle'), [])
 
   const selectedModulesCount = useMemo(() => Object.values(modules).filter(Boolean).length, [modules])
 
@@ -151,7 +208,9 @@ function App() {
 
   return (
     <div className="min-h-screen min-h-[100dvh] bg-slate-50">
-      <nav className="border-b border-slate-200 bg-white" aria-label="Navegação principal">
+      <MobileTopBar title={view === 'generator' ? 'Gerador SQL' : 'Integração Oracle'} status={view === 'generator' ? formStatus : undefined} />
+
+      <nav className="hidden border-b border-slate-200 bg-white lg:block" aria-label="Navegação principal">
         <div className="mx-auto flex max-w-[1600px] flex-wrap items-center gap-2 px-3 py-2 sm:px-6 lg:px-8">
           <button
             type="button"
@@ -184,14 +243,16 @@ function App() {
 
       {view === 'generator' ? (
         <>
-          <PageHeader
-            status={formStatus}
-            onClear={() => setActiveModal('clear')}
-            onCopy={handleCopy}
-            onDownload={() => setActiveModal('download')}
-            copyDisabled={!isValid}
-            downloadDisabled={!isValid}
-          />
+          <div className="hidden lg:block">
+            <PageHeader
+              status={formStatus}
+              onClear={() => setActiveModal('clear')}
+              onCopy={handleCopy}
+              onDownload={() => setActiveModal('download')}
+              copyDisabled={!isValid}
+              downloadDisabled={!isValid}
+            />
+          </div>
           <ProgressNavigation completedSteps={completedSteps} />
 
           <main className="mx-auto max-w-[1600px] px-3 py-5 sm:px-6 sm:py-6 lg:px-8">
@@ -216,7 +277,7 @@ function App() {
                   aria-labelledby="modules-heading"
                 >
                   <div className="mb-1">
-                    <h2 id="modules-heading" className="flex items-center gap-2 text-lg font-semibold text-slate-900">
+                    <h2 id="modules-heading" className="flex items-center gap-2 text-base font-semibold text-slate-900">
                       <LayoutGrid size={18} className="text-blue-600" aria-hidden="true" />
                       Módulos e integrações
                     </h2>
@@ -277,12 +338,18 @@ function App() {
                   fileName={fileName}
                   onCopy={handleCopy}
                 />
+                {applyResult && <ApplyResultPanel result={applyResult} onDismiss={dismissResult} />}
                 <ActionBar
                   disabled={!isValid}
                   onCopy={handleCopy}
                   onRequestDownload={() => setActiveModal('download')}
                   onRestoreExample={restoreExample}
                   onRequestClear={() => setActiveModal('clear')}
+                  onApply={handleApply}
+                  applyDisabled={applyDisabled}
+                  applyBusy={applyBusy}
+                  oracleConnected={oracleConnected}
+                  onConfigureOracle={handleConfigureOracle}
                 />
               </div>
             </div>
@@ -292,6 +359,9 @@ function App() {
             disabled={!isValid}
             onCopy={handleCopy}
             onDownload={() => setActiveModal('download')}
+            onApply={handleApply}
+            applyDisabled={applyDisabled}
+            applyBusy={applyBusy}
           />
 
           <ConfirmationModal
@@ -312,6 +382,14 @@ function App() {
             onConfirm={handleConfirmClear}
             onCancel={() => setActiveModal(null)}
           />
+
+          <ApplyOracleConfirmationModal
+            open={applyModalOpen}
+            preview={applyPreview}
+            busy={applyBusy}
+            onCancel={cancelPreview}
+            onConfirm={() => void confirmApply()}
+          />
         </>
       ) : (
         <main className="mx-auto max-w-[1600px] px-3 py-5 sm:px-6 sm:py-6 lg:px-8">
@@ -319,6 +397,7 @@ function App() {
         </main>
       )}
 
+      <MobileTabBar view={view} onChange={setView} />
       <Toast message={toastMessage} />
     </div>
   )

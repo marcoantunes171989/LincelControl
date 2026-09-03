@@ -26,14 +26,12 @@ export function PageHeader({ status, onClear, onCopy, onDownload, copyDisabled, 
       <div className="mx-auto max-w-[1600px] px-4 py-5 sm:px-6 lg:px-8">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div className="flex min-w-0 items-start gap-3">
-            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-blue-600 to-blue-500 text-white shadow-sm shadow-blue-200">
-              <Database size={22} aria-hidden="true" />
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-blue-600 to-blue-500 text-white shadow-sm shadow-blue-200">
+              <Database size={20} aria-hidden="true" />
             </div>
             <div className="min-w-0">
-              <h1 className="text-xl font-semibold tracking-tight text-slate-900 sm:text-2xl lg:text-[1.75rem]">
-                Gerador de Update — TAB_LOJA
-              </h1>
-              <p className="mt-1 max-w-2xl text-sm text-slate-600 sm:text-base">
+              <h1 className="text-xl font-semibold tracking-tight text-slate-900">Gerador de Update — TAB_LOJA</h1>
+              <p className="mt-1 max-w-2xl text-sm text-slate-500">
                 Configure a loja, selecione os módulos da licença e gere o script SQL automaticamente.
               </p>
               <div className="mt-3 flex flex-wrap items-center gap-2" aria-live="polite">

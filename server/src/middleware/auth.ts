@@ -8,6 +8,7 @@ export type OraclePermission =
   | 'oracle.disconnect'
   | 'oracle.view_status'
   | 'oracle.query_dashboard'
+  | 'oracle.apply_license'
 
 declare global {
   namespace Express {
@@ -25,6 +26,7 @@ const ADMIN_PERMISSIONS: OraclePermission[] = [
   'oracle.disconnect',
   'oracle.view_status',
   'oracle.query_dashboard',
+  'oracle.apply_license',
 ]
 
 const VIEWER_PERMISSIONS: OraclePermission[] = ['oracle.view_status', 'oracle.query_dashboard']

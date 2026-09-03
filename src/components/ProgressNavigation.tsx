@@ -51,7 +51,7 @@ export function ProgressNavigation({ completedSteps }: ProgressNavigationProps) 
   return (
     <nav
       aria-label="Etapas do formulário"
-      className="sticky top-0 z-30 w-full min-w-0 border-b border-slate-200 bg-white/95 backdrop-blur"
+      className="sticky top-14 z-30 w-full min-w-0 border-b border-slate-200 bg-white/95 backdrop-blur lg:top-0"
     >
       <div className="mx-auto min-w-0 max-w-[1600px] px-4 sm:px-6 lg:px-8">
         <ol className="scrollbar-none flex min-w-0 snap-x snap-mandatory gap-1 overflow-x-auto py-2">

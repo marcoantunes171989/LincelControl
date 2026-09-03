@@ -1,3 +1,5 @@
+import type { LicenseData, ModuleState, NfeExpertMode, StoreData } from './index'
+
 export type OracleConnectionStatus =
   | 'not_configured'
   | 'password_required'
@@ -119,6 +121,64 @@ export const EMPTY_ORACLE_FORM: OracleFormState = {
   expectedDatabase: '',
   username: '',
   password: '',
+}
+
+/**
+ * Payload da atualização de licença enviado ao backend (preview/apply).
+ * Reaproveita os mesmos tipos do Gerador SQL (StoreData/LicenseData/ModuleState/
+ * NfeExpertMode) — não existe uma cópia paralela desses campos no frontend.
+ */
+export interface LicenseUpdatePayload {
+  store: Pick<StoreData, 'codLoja' | 'numCgc' | 'descricao'>
+  license: LicenseData
+  modules: ModuleState
+  nfeExpertMode: NfeExpertMode
+}
+
+export interface LicenseUpdateApplyPayload extends LicenseUpdatePayload {
+  previewToken: string
+}
+
+export interface ChangedLicenseField {
+  field: string
+  oldValue: string | number | null
+  newValue: string | number
+}
+
+export interface LicenseUpdateDatabaseInfo {
+  alias: string | null
+  host: string | null
+  port: number | null
+  serviceName: string | null
+  username: string | null
+}
+
+export interface LicenseUpdateStoreInfo {
+  codLoja: number
+  cnpj: string
+  descricao: string | null
+}
+
+export interface LicenseUpdatePreviewResponse {
+  ok: true
+  previewToken: string
+  store: LicenseUpdateStoreInfo
+  database: LicenseUpdateDatabaseInfo
+  changedFields: ChangedLicenseField[]
+  changedCount: number
+  message: string
+}
+
+export interface LicenseUpdateApplyResponse {
+  ok: true
+  verified: true
+  store: LicenseUpdateStoreInfo
+  database: LicenseUpdateDatabaseInfo
+  changedFields: ChangedLicenseField[]
+  changedCount: number
+  rowsAffected: number
+  durationMs: number
+  appliedAt: string
 }
 
 export const DIAGNOSTIC_STEPS = [

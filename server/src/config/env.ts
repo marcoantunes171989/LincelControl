@@ -26,6 +26,9 @@ export const env = {
   nodeEnv: process.env.NODE_ENV ?? 'development',
   isProduction: (process.env.NODE_ENV ?? 'development') === 'production',
   port: intEnv('PORT', 8787),
+  // Bind local por padrão — a API só deve ser exposta na rede do cliente
+  // com uma decisão explícita do operador (nunca 0.0.0.0 por padrão).
+  host: process.env.ORACLE_AGENT_HOST ?? '127.0.0.1',
   corsOrigin: process.env.CORS_ORIGIN ?? 'http://localhost:5173',
   adminApiKey: process.env.ADMIN_API_KEY ?? process.env.ORACLE_ADMIN_API_KEY ?? '',
   dataDir: process.env.DATA_DIR ?? path.resolve(__dirname, '../../data'),
@@ -50,4 +53,6 @@ export const env = {
   rateLimitMax: intEnv('ORACLE_RATE_LIMIT_MAX', 20),
   passwordAttemptWindowMs: intEnv('ORACLE_PASSWORD_ATTEMPT_WINDOW_MS', 300_000),
   passwordAttemptMax: intEnv('ORACLE_PASSWORD_ATTEMPT_MAX', 5),
+  oraclePreviewTokenTtlMs: intEnv('ORACLE_PREVIEW_TOKEN_TTL_MS', 300_000),
+  oraclePreviewTokenSecret: process.env.ORACLE_PREVIEW_TOKEN_SECRET ?? '',
 }

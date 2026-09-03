@@ -275,7 +275,7 @@ class OracleIntegrationService {
       throw Object.assign(new Error('Nenhum alias TNS encontrado no arquivo importado.'), { statusCode: 400 })
     }
 
-    const safeName = (fileName || 'tnsnames.ora').replace(/[^\w.\-]/g, '') || 'tnsnames.ora'
+    const safeName = (fileName || 'tnsnames.ora').replace(/[^\w.-]/g, '') || 'tnsnames.ora'
     const adminPath = path.join(env.dataDir, 'network', 'admin')
     await fs.mkdir(adminPath, { recursive: true })
     const filePath = path.join(adminPath, safeName)
