@@ -4,6 +4,7 @@ import type {
   LicenseUpdatePayload,
   LicenseUpdatePreviewResponse,
   OracleConfigurationPayload,
+  OraclePrivilegeMode,
   OracleRuntimeStatus,
   OracleValidateResponse,
   TnsAliasInfo,
@@ -165,6 +166,7 @@ export const oracleApi = {
       expectedHost?: string
       expectedPort?: number | null
       expectedDatabase?: string
+      privilege?: OraclePrivilegeMode
     },
   ) =>
     request<{ ok: boolean; status: OracleRuntimeStatus }>('/api/oracle/connect', {
@@ -182,6 +184,7 @@ export const oracleApi = {
         ...(identity?.expectedHost ? { expectedHost: identity.expectedHost } : {}),
         ...(identity?.expectedPort != null ? { expectedPort: identity.expectedPort } : {}),
         ...(identity?.expectedDatabase ? { expectedDatabase: identity.expectedDatabase } : {}),
+        ...(identity?.privilege ? { privilege: identity.privilege } : {}),
       }),
     }),
   disconnect: () =>

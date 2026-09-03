@@ -78,3 +78,17 @@ export function getOracleClientState() {
 export function getOracledb() {
   return oracledb
 }
+
+export type OraclePrivilegeMode = 'normal' | 'sysdba' | 'sysoper'
+
+/**
+ * Mapeia o modo "Connect as" para a constante oficial do driver.
+ * Nunca é concatenado na connectString — vai na propriedade `privilege` do
+ * getConnection()/createPool() (suportada em Thin mode desde node-oracledb 6.5.1).
+ * `undefined` mantém o comportamento padrão (sessão normal).
+ */
+export function resolvePrivilege(mode: OraclePrivilegeMode | undefined | null): number | undefined {
+  if (mode === 'sysdba') return oracledb.SYSDBA
+  if (mode === 'sysoper') return oracledb.SYSOPER
+  return undefined
+}

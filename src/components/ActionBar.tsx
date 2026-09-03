@@ -36,7 +36,7 @@ export function ActionBar({
             type="button"
             onClick={onCopy}
             disabled={disabled}
-            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400"
+            className="inline-flex min-h-11 lg:min-h-9 items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400"
           >
             <Copy size={16} aria-hidden="true" />
             Copiar SQL
@@ -45,7 +45,7 @@ export function ActionBar({
             type="button"
             onClick={onRequestDownload}
             disabled={disabled}
-            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-blue-600 px-4 text-sm font-semibold text-blue-700 transition hover:bg-blue-50 disabled:cursor-not-allowed disabled:border-slate-200 disabled:text-slate-400"
+            className="inline-flex min-h-11 lg:min-h-9 items-center justify-center gap-2 rounded-lg border border-blue-600 px-4 text-sm font-semibold text-blue-700 transition hover:bg-blue-50 disabled:cursor-not-allowed disabled:border-slate-200 disabled:text-slate-400"
           >
             <Download size={16} aria-hidden="true" />
             Baixar arquivo .sql
@@ -58,7 +58,7 @@ export function ActionBar({
             onClick={onApply}
             disabled={applyDisabled}
             title="Atualizar diretamente no Oracle"
-            className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400"
+            className="inline-flex min-h-11 lg:min-h-9 w-full items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400"
           >
             {applyBusy ? (
               <Loader2 size={16} className="animate-spin" aria-hidden="true" />
@@ -88,7 +88,7 @@ export function ActionBar({
         <button
           type="button"
           onClick={onRestoreExample}
-          className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-slate-200 px-4 text-sm font-medium text-slate-600 transition hover:bg-slate-50"
+          className="inline-flex min-h-11 lg:min-h-9 items-center justify-center gap-2 rounded-lg border border-slate-200 px-4 text-sm font-medium text-slate-600 transition hover:bg-slate-50"
         >
           <RotateCcw size={16} aria-hidden="true" />
           Restaurar exemplo
@@ -96,7 +96,7 @@ export function ActionBar({
         <button
           type="button"
           onClick={onRequestClear}
-          className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-red-200 px-4 text-sm font-medium text-red-600 transition hover:bg-red-50"
+          className="inline-flex min-h-11 lg:min-h-9 items-center justify-center gap-2 rounded-lg border border-red-200 px-4 text-sm font-medium text-red-600 transition hover:bg-red-50"
         >
           <Trash2 size={16} aria-hidden="true" />
           Limpar formulário

@@ -18,7 +18,13 @@ import { StatusBadge } from '../StatusBadge'
 import { DiagnosticStepList } from './DiagnosticStepList'
 import { SettingsInput } from './SettingsInput'
 import { useOracleIntegration } from '../../hooks/useOracleIntegration'
-import type { OracleConnectionStatus } from '../../types/oracle'
+import type { OracleConnectionStatus, OraclePrivilegeMode } from '../../types/oracle'
+
+const PRIVILEGE_LABELS: Record<OraclePrivilegeMode, string> = {
+  normal: 'Normal',
+  sysdba: 'SYSDBA',
+  sysoper: 'SYSOPER',
+}
 
 const STATUS_LABELS: Record<OracleConnectionStatus, string> = {
   not_configured: 'Não configurado',
@@ -136,7 +142,7 @@ export function OracleIntegrationPage({ onToast }: OracleIntegrationPageProps) {
               type="button"
               disabled={busy}
               onClick={() => void refreshStatus()}
-              className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 text-sm font-medium text-slate-600 transition hover:bg-slate-50 disabled:opacity-50"
+              className="inline-flex min-h-11 lg:min-h-9 items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 text-sm font-medium text-slate-600 transition hover:bg-slate-50 disabled:opacity-50"
             >
               <RefreshCw size={15} aria-hidden="true" />
               Atualizar
@@ -156,21 +162,28 @@ export function OracleIntegrationPage({ onToast }: OracleIntegrationPageProps) {
           </div>
         )}
 
-        {progress && (
-          <div className="mt-4 flex items-center gap-2 rounded-xl border border-blue-200 bg-blue-50 px-3 py-2 text-sm text-blue-800">
-            <Loader2 size={16} className="animate-spin" aria-hidden="true" />
-            {progress}
-          </div>
-        )}
+        {/* Região única aria-live: leitores de tela anunciam "Conectando..." e o resultado
+            (sucesso ou erro) sem exigir foco manual em cada mudança de estado. */}
+        <div aria-live="polite" aria-atomic="true">
+          {progress && (
+            <div className="mt-4 flex items-center gap-2 rounded-xl border border-blue-200 bg-blue-50 px-3 py-2 text-sm text-blue-800">
+              <Loader2 size={16} className="animate-spin" aria-hidden="true" />
+              {progress}
+            </div>
+          )}
 
-        {error && (
-          <div className="mt-4 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700" role="alert">
-            {error}
-          </div>
-        )}
+          {error && (
+            <div
+              className="mt-4 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700"
+              role="alert"
+            >
+              {error}
+            </div>
+          )}
+        </div>
       </section>
 
-      <section className="mx-auto w-full max-w-xl rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+      <section className="mx-auto w-full max-w-2xl rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
         <div className="mb-5 flex items-center gap-3 border-b border-slate-100 pb-4">
           <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-gradient-to-br from-rose-500 to-rose-600 text-white shadow-sm">
             <Database size={28} aria-hidden="true" />
@@ -204,7 +217,7 @@ export function OracleIntegrationPage({ onToast }: OracleIntegrationPageProps) {
                 type="button"
                 disabled={busy || connected}
                 onClick={() => tnsFileInputRef.current?.click()}
-                className="inline-flex min-h-11 items-center gap-2 rounded-lg bg-slate-800 px-3 text-sm font-semibold text-white transition hover:bg-slate-900 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400"
+                className="inline-flex min-h-11 lg:min-h-9 items-center gap-2 rounded-lg bg-slate-800 px-3 text-sm font-semibold text-white transition hover:bg-slate-900 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400"
               >
                 <FileUp size={15} aria-hidden="true" />
                 Importar tnsnames.ora
@@ -212,7 +225,7 @@ export function OracleIntegrationPage({ onToast }: OracleIntegrationPageProps) {
               <input
                 ref={tnsFileInputRef}
                 type="file"
-                accept=".ora,text/plain,*/*"
+                accept=".ora,text/plain"
                 className="sr-only"
                 disabled={busy || connected}
                 onChange={(event) => {
@@ -258,7 +271,7 @@ export function OracleIntegrationPage({ onToast }: OracleIntegrationPageProps) {
                   status?.passwordAvailableInMemory && !form.password ? 'Senha já disponível na API' : ''
                 }
                 onChange={(event) => updateField('password', event.target.value)}
-                className="min-h-11 w-full rounded-lg border border-slate-300 px-3 py-2 pr-11 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 disabled:bg-slate-50"
+                className="min-h-11 lg:min-h-9 w-full rounded-lg border border-slate-300 px-3 py-2 pr-11 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 disabled:bg-slate-50"
               />
               <button
                 type="button"
@@ -283,7 +296,7 @@ export function OracleIntegrationPage({ onToast }: OracleIntegrationPageProps) {
                   value={form.tnsAlias}
                   disabled={busy || connected}
                   onChange={(event) => selectAlias(event.target.value)}
-                  className="min-h-11 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 font-mono text-sm uppercase outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 disabled:bg-slate-50"
+                  className="min-h-11 lg:min-h-9 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 font-mono text-sm uppercase outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 disabled:bg-slate-50"
                 >
                   <option value="">Selecione o alias TNS…</option>
                   {aliases.map((alias) => (
@@ -300,7 +313,7 @@ export function OracleIntegrationPage({ onToast }: OracleIntegrationPageProps) {
                   disabled={busy || connected}
                   placeholder="Importe o TNS ou digite o alias"
                   onChange={(event) => updateField('tnsAlias', event.target.value.toUpperCase())}
-                  className="min-h-11 w-full rounded-lg border border-slate-300 px-3 py-2 font-mono text-sm uppercase outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 disabled:bg-slate-50"
+                  className="min-h-11 lg:min-h-9 w-full rounded-lg border border-slate-300 px-3 py-2 font-mono text-sm uppercase outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 disabled:bg-slate-50"
                 />
               )}
               <button
@@ -308,7 +321,7 @@ export function OracleIntegrationPage({ onToast }: OracleIntegrationPageProps) {
                 disabled={busy || connected}
                 title="Importar tnsnames.ora"
                 onClick={() => tnsFileInputRef.current?.click()}
-                className="inline-flex min-h-11 shrink-0 items-center justify-center rounded-lg border border-slate-300 px-3 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"
+                className="inline-flex min-h-11 lg:min-h-9 shrink-0 items-center justify-center rounded-lg border border-slate-300 px-3 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"
               >
                 …
               </button>
@@ -335,12 +348,22 @@ export function OracleIntegrationPage({ onToast }: OracleIntegrationPageProps) {
           <label className="flex flex-col gap-1.5">
             <span className="text-sm font-medium text-slate-700">Connect as</span>
             <select
-              disabled
-              className="min-h-11 rounded-lg border border-slate-300 bg-slate-50 px-3 text-sm text-slate-600"
-              defaultValue="Normal"
+              value={form.privilege}
+              disabled={busy || connected}
+              onChange={(event) => updateField('privilege', event.target.value as OraclePrivilegeMode)}
+              className="min-h-11 lg:min-h-9 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-700 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 disabled:bg-slate-50 disabled:text-slate-500"
             >
-              <option value="Normal">Normal</option>
+              {(Object.keys(PRIVILEGE_LABELS) as OraclePrivilegeMode[]).map((mode) => (
+                <option key={mode} value={mode}>
+                  {PRIVILEGE_LABELS[mode]}
+                </option>
+              ))}
             </select>
+            {form.privilege !== 'normal' && (
+              <p className="text-xs text-amber-700">
+                Sessão privilegiada ({PRIVILEGE_LABELS[form.privilege]}). Use apenas quando necessário.
+              </p>
+            )}
           </label>
 
           <div className="flex flex-wrap justify-end gap-2 border-t border-slate-100 pt-4">
@@ -348,7 +371,7 @@ export function OracleIntegrationPage({ onToast }: OracleIntegrationPageProps) {
               <button
                 type="submit"
                 disabled={busy || apiReachable === false}
-                className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"
+                className="inline-flex min-h-11 lg:min-h-9 items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"
               >
                 <LogOut size={16} aria-hidden="true" />
                 Cancel / Desconectar
@@ -359,14 +382,14 @@ export function OracleIntegrationPage({ onToast }: OracleIntegrationPageProps) {
                   type="button"
                   disabled={busy}
                   onClick={() => updateField('password', '')}
-                  className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 text-sm font-medium text-slate-600 transition hover:bg-slate-50 disabled:opacity-50"
+                  className="inline-flex min-h-11 lg:min-h-9 items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 text-sm font-medium text-slate-600 transition hover:bg-slate-50 disabled:opacity-50"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={busy || !canConnect}
-                  className="inline-flex min-h-11 items-center gap-2 rounded-lg bg-blue-600 px-5 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400"
+                  className="inline-flex min-h-11 lg:min-h-9 items-center gap-2 rounded-lg bg-blue-600 px-5 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400"
                 >
                   {busy ? <Loader2 size={16} className="animate-spin" /> : <LogIn size={16} />}
                   OK
@@ -453,7 +476,7 @@ export function OracleIntegrationPage({ onToast }: OracleIntegrationPageProps) {
                     onToast?.(result.message)
                   })
                 }
-                className="inline-flex min-h-11 items-center gap-2 rounded-lg bg-slate-800 px-4 text-sm font-semibold text-white transition hover:bg-slate-900 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400"
+                className="inline-flex min-h-11 lg:min-h-9 items-center gap-2 rounded-lg bg-slate-800 px-4 text-sm font-semibold text-white transition hover:bg-slate-900 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400"
               >
                 {busy ? <Loader2 size={15} className="animate-spin" aria-hidden="true" /> : null}
                 Salvar TNS_ADMIN
