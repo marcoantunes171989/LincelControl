@@ -57,7 +57,7 @@ export function ConfirmationModal({
           <button
             type="button"
             onClick={onCancel}
-            className="min-h-11 rounded-lg border border-slate-200 text-sm font-medium text-slate-600 transition hover:bg-slate-50"
+            className="min-h-11 lg:min-h-9 rounded-lg border border-slate-200 text-sm font-medium text-slate-600 transition hover:bg-slate-50"
           >
             {cancelLabel}
           </button>
@@ -65,7 +65,7 @@ export function ConfirmationModal({
             type="button"
             ref={confirmButtonRef}
             onClick={onConfirm}
-            className={`min-h-11 rounded-lg text-sm font-semibold text-white transition ${
+            className={`min-h-11 lg:min-h-9 rounded-lg text-sm font-semibold text-white transition ${
               tone === 'danger' ? 'bg-red-600 hover:bg-red-700' : 'bg-blue-600 hover:bg-blue-700'
             }`}
           >

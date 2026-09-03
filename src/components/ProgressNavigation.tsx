@@ -65,7 +65,7 @@ export function ProgressNavigation({ completedSteps }: ProgressNavigationProps) 
                   onClick={() => handleNavigate(step.id)}
                   aria-current={isActive ? 'step' : undefined}
                   aria-label={step.label}
-                  className={`flex min-h-11 items-center gap-2 whitespace-nowrap rounded-lg px-2.5 text-sm font-medium transition sm:px-3 ${
+                  className={`flex min-h-11 lg:min-h-9 items-center gap-2 whitespace-nowrap rounded-lg px-2.5 text-sm font-medium transition sm:px-3 ${
                     isActive ? 'bg-blue-50 text-blue-700' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-700'
                   }`}
                 >

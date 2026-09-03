@@ -49,7 +49,7 @@ export function PageHeader({ status, onClear, onCopy, onDownload, copyDisabled, 
               type="button"
               onClick={onClear}
               aria-label="Limpar formulário"
-              className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-3 text-sm font-medium text-slate-600 transition hover:bg-slate-50 sm:flex-none"
+              className="inline-flex min-h-11 lg:min-h-9 flex-1 items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-3 text-sm font-medium text-slate-600 transition hover:bg-slate-50 sm:flex-none"
             >
               <Trash2 size={16} aria-hidden="true" />
               <span className="hidden sm:inline">Limpar</span>
@@ -59,7 +59,7 @@ export function PageHeader({ status, onClear, onCopy, onDownload, copyDisabled, 
               onClick={onCopy}
               disabled={copyDisabled}
               aria-label="Copiar script SQL"
-              className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-3 text-sm font-medium text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 sm:flex-none"
+              className="inline-flex min-h-11 lg:min-h-9 flex-1 items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-3 text-sm font-medium text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 sm:flex-none"
             >
               <Copy size={16} aria-hidden="true" />
               <span className="hidden sm:inline">Copiar</span>
@@ -69,7 +69,7 @@ export function PageHeader({ status, onClear, onCopy, onDownload, copyDisabled, 
               onClick={onDownload}
               disabled={downloadDisabled}
               aria-label="Baixar script SQL"
-              className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-lg bg-blue-600 px-3 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400 sm:flex-none"
+              className="inline-flex min-h-11 lg:min-h-9 flex-1 items-center justify-center gap-2 rounded-lg bg-blue-600 px-3 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400 sm:flex-none"
             >
               <Download size={16} aria-hidden="true" />
               <span className="hidden sm:inline">Baixar SQL</span>

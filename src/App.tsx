@@ -215,7 +215,7 @@ function App() {
           <button
             type="button"
             onClick={() => setView('generator')}
-            className={`inline-flex min-h-11 items-center gap-2 rounded-lg px-3 text-sm font-semibold transition ${
+            className={`inline-flex min-h-11 lg:min-h-9 items-center gap-2 rounded-lg px-3 text-sm font-semibold transition ${
               view === 'generator'
                 ? 'bg-blue-50 text-blue-700'
                 : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
@@ -228,7 +228,7 @@ function App() {
           <button
             type="button"
             onClick={() => setView('oracle')}
-            className={`inline-flex min-h-11 items-center gap-2 rounded-lg px-3 text-sm font-semibold transition ${
+            className={`inline-flex min-h-11 lg:min-h-9 items-center gap-2 rounded-lg px-3 text-sm font-semibold transition ${
               view === 'oracle'
                 ? 'bg-blue-50 text-blue-700'
                 : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'

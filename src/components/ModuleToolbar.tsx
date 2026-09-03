@@ -46,7 +46,7 @@ export function ModuleToolbar({
         <button
           type="button"
           onClick={onSelectAll}
-          className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-4 text-sm font-medium text-blue-700 transition hover:bg-blue-100 sm:flex-none"
+          className="inline-flex min-h-11 lg:min-h-9 flex-1 items-center justify-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-4 text-sm font-medium text-blue-700 transition hover:bg-blue-100 sm:flex-none"
         >
           <CheckSquare size={16} aria-hidden="true" />
           Selecionar todos
@@ -54,7 +54,7 @@ export function ModuleToolbar({
         <button
           type="button"
           onClick={onDeselectAll}
-          className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 text-sm font-medium text-slate-600 transition hover:bg-slate-50 sm:flex-none"
+          className="inline-flex min-h-11 lg:min-h-9 flex-1 items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 text-sm font-medium text-slate-600 transition hover:bg-slate-50 sm:flex-none"
         >
           <Square size={16} aria-hidden="true" />
           Limpar seleção
@@ -73,7 +73,7 @@ export function ModuleToolbar({
           onChange={(event) => onQueryChange(event.target.value)}
           placeholder="Filtrar por módulo ou campo do banco..."
           aria-label="Filtrar módulos"
-          className="min-h-11 w-full rounded-lg border border-slate-300 py-2 pl-9 pr-3 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+          className="min-h-11 lg:min-h-9 w-full rounded-lg border border-slate-300 py-2 pl-9 pr-3 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
         />
       </div>
     </div>

@@ -180,7 +180,7 @@ export function SqlPreview({
                 type="button"
                 onClick={() => setIsFullscreen(false)}
                 aria-label="Fechar tela cheia"
-                className="inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-slate-700 px-3 text-sm font-medium text-slate-200 transition hover:bg-slate-800"
+                className="inline-flex min-h-11 lg:min-h-9 items-center gap-1.5 rounded-lg border border-slate-700 px-3 text-sm font-medium text-slate-200 transition hover:bg-slate-800"
               >
                 <Minimize2 size={14} aria-hidden="true" />
                 <span className="hidden sm:inline">Sair da tela cheia</span>

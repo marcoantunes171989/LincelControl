@@ -36,7 +36,7 @@ export function NfeExpertSelector({ value, onChange }: NfeExpertSelectorProps) {
               role="radio"
               aria-checked={isSelected}
               onClick={() => onChange(option.value)}
-              className={`min-h-11 rounded-lg px-2 text-sm font-medium transition ${
+              className={`min-h-11 lg:min-h-9 rounded-lg px-2 text-sm font-medium transition ${
                 isSelected ? 'bg-blue-600 text-white shadow' : 'text-slate-600 hover:bg-white'
               }`}
             >

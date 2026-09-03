@@ -151,7 +151,7 @@ export function ApplyOracleConfirmationModal({
             type="button"
             onClick={onCancel}
             disabled={busy}
-            className="min-h-11 rounded-lg border border-slate-200 text-sm font-medium text-slate-600 transition hover:bg-slate-50 disabled:opacity-50"
+            className="min-h-11 lg:min-h-9 rounded-lg border border-slate-200 text-sm font-medium text-slate-600 transition hover:bg-slate-50 disabled:opacity-50"
           >
             Cancelar
           </button>
@@ -160,7 +160,7 @@ export function ApplyOracleConfirmationModal({
             ref={confirmButtonRef}
             onClick={onConfirm}
             disabled={busy || !hasChanges}
-            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-blue-600 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400"
+            className="inline-flex min-h-11 lg:min-h-9 items-center justify-center gap-2 rounded-lg bg-blue-600 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400"
           >
             {busy ? <Loader2 size={16} className="animate-spin" aria-hidden="true" /> : <DatabaseZap size={16} aria-hidden="true" />}
             Aplicar atualização

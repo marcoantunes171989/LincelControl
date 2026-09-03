@@ -80,7 +80,7 @@ export function FormField({
           aria-invalid={Boolean(error)}
           aria-describedby={describedBy}
           aria-busy={loading}
-          className={`min-h-11 w-full rounded-lg border px-3 py-2 text-sm outline-none transition ${
+          className={`min-h-11 lg:min-h-9 w-full rounded-lg border px-3 py-2 text-sm outline-none transition ${
             readOnly
               ? 'cursor-default border-slate-200 bg-slate-50 text-slate-600'
               : 'text-slate-900 focus:ring-2 focus:ring-blue-200'
@@ -111,7 +111,7 @@ export function FormField({
               type="button"
               onClick={() => handleStep(-1)}
               aria-label={`Diminuir ${label}`}
-              className="flex min-h-11 flex-1 items-center justify-center text-slate-500 transition hover:bg-slate-50 hover:text-slate-700 sm:w-10 sm:flex-none"
+              className="flex min-h-11 lg:min-h-9 flex-1 items-center justify-center text-slate-500 transition hover:bg-slate-50 hover:text-slate-700 sm:w-10 sm:flex-none"
             >
               <Minus size={15} aria-hidden="true" />
             </button>
@@ -119,7 +119,7 @@ export function FormField({
               type="button"
               onClick={() => handleStep(1)}
               aria-label={`Aumentar ${label}`}
-              className="flex min-h-11 flex-1 items-center justify-center border-l border-slate-300 text-slate-500 transition hover:bg-slate-50 hover:text-slate-700 sm:w-10 sm:flex-none"
+              className="flex min-h-11 lg:min-h-9 flex-1 items-center justify-center border-l border-slate-300 text-slate-500 transition hover:bg-slate-50 hover:text-slate-700 sm:w-10 sm:flex-none"
             >
               <Plus size={15} aria-hidden="true" />
             </button>
@@ -132,9 +132,17 @@ export function FormField({
           {hint}
         </p>
       )}
-      {error && (
-        <p id={errorId} role="alert" className="text-xs font-medium text-red-600">
-          {error}
+      {/* Reserva a altura da linha de erro mesmo sem erro — evita que campos
+          lado a lado no mesmo grid (ex.: Licença e PDVs) fiquem desalinhados
+          só porque um vizinho está mostrando validação e o outro não. */}
+      {!readOnly && (
+        <p
+          id={errorId}
+          role="alert"
+          aria-hidden={error ? undefined : true}
+          className={`min-h-4 text-xs font-medium text-red-600 ${error ? '' : 'invisible'}`}
+        >
+          {error || ' '}
         </p>
       )}
     </div>
