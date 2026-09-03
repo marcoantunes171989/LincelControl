@@ -11,7 +11,7 @@ import { resolveHost } from '../utils/dns.js'
 import { logger } from '../utils/logger.js'
 import { testTcpConnection } from '../utils/tcp.js'
 import { runTnsPing } from '../utils/tnsping.js'
-import { ensureThinDriver, getOracleClientState, getOracledb } from './client.js'
+import { ensureThinDriver, getOracleClientState, getOracledb, resolvePrivilege, type OraclePrivilegeMode } from './client.js'
 import { buildConnectString } from './connectString.js'
 import { compareTnsWithExpected } from './comparison.js'
 import { translateOracleError } from './errors.js'
@@ -269,6 +269,9 @@ class OracleIntegrationService {
     if (!trimmed) {
       throw Object.assign(new Error('Arquivo TNS vazio.'), { statusCode: 400 })
     }
+    if (Buffer.byteLength(trimmed, 'utf8') > 256 * 1024) {
+      throw Object.assign(new Error('Arquivo TNS excede o limite de 256 KB.'), { statusCode: 400 })
+    }
 
     const aliases = parseTnsNames(trimmed)
     if (aliases.length === 0) {
@@ -314,6 +317,8 @@ class OracleIntegrationService {
     includeAuth?: boolean
     /** simple = fluxo PL/SQL (TNS + usuário/senha). full = diagnósticos extras. */
     mode?: 'simple' | 'full'
+    /** Connect as: normal (padrão) | sysdba | sysoper — nunca concatenado na connectString. */
+    privilege?: OraclePrivilegeMode
     actor?: string
   }): Promise<{ ok: boolean; stages: StageResult[]; alias: TnsAliasInfo | null }> {
     this.ensureNotBusy()
@@ -587,10 +592,12 @@ class OracleIntegrationService {
       })
       let connection: Connection | null = null
       try {
+        const privilege = resolvePrivilege(options?.privilege)
         connection = await oracledb.getConnection({
           user: latest.username,
           password: this.passwordInMemory,
           connectString,
+          ...(privilege !== undefined ? { privilege } : {}),
         })
 
         const dual = await connection.execute<{ RESULTADO: number }>(
@@ -701,7 +708,11 @@ class OracleIntegrationService {
     }
   }
 
-  async connectOraclePool(options?: { password?: string; actor?: string }): Promise<OracleRuntimeStatus> {
+  async connectOraclePool(options?: {
+    password?: string
+    privilege?: OraclePrivilegeMode
+    actor?: string
+  }): Promise<OracleRuntimeStatus> {
     this.ensureNotBusy()
     if (options?.password) this.setPassword(options.password)
     if (!this.passwordInMemory) {
@@ -727,6 +738,7 @@ class OracleIntegrationService {
         password: this.passwordInMemory,
         includeAuth: true,
         mode: 'simple',
+        privilege: options?.privilege,
         actor: options?.actor,
       })
       this.busy = true
@@ -766,6 +778,7 @@ class OracleIntegrationService {
           },
           this.parsedAlias,
         )
+        const privilege = resolvePrivilege(options?.privilege)
         await oracledb.createPool({
           poolAlias: POOL_ALIAS,
           user: settings.username,
@@ -777,6 +790,7 @@ class OracleIntegrationService {
           poolTimeout: env.oraclePoolTimeout,
           queueTimeout: env.oracleQueueTimeoutMs,
           stmtCacheSize: 30,
+          ...(privilege !== undefined ? { privilege } : {}),
         })
         this.pushStage({
           stage: 'pool',
@@ -862,8 +876,13 @@ class OracleIntegrationService {
     return this.connectOraclePool(options)
   }
 
-  async toggle(enabled: boolean, password?: string, actor?: string): Promise<OracleRuntimeStatus> {
-    if (enabled) return this.connectOraclePool({ password, actor })
+  async toggle(
+    enabled: boolean,
+    password?: string,
+    actor?: string,
+    privilege?: OraclePrivilegeMode,
+  ): Promise<OracleRuntimeStatus> {
+    if (enabled) return this.connectOraclePool({ password, privilege, actor })
     return this.disconnectOraclePool({ actor })
   }
 

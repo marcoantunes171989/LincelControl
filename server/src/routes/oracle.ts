@@ -22,6 +22,8 @@ const configurationSchema = z.object({
   isEnabled: z.boolean().optional(),
 })
 
+const privilegeSchema = z.enum(['normal', 'sysdba', 'sysoper']).optional().default('normal')
+
 const connectSchema = z.object({
   password: z.string().min(1).optional(),
   username: z.string().min(1).optional(),
@@ -33,6 +35,7 @@ const connectSchema = z.object({
   expectedPort: z.coerce.number().int().min(1).max(65535).optional().nullable(),
   expectedDatabase: z.string().optional(),
   mode: z.enum(['simple', 'full']).optional().default('simple'),
+  privilege: privilegeSchema,
 })
 
 const toggleSchema = z.object({
@@ -47,6 +50,7 @@ const toggleSchema = z.object({
   expectedPort: z.coerce.number().int().min(1).max(65535).optional().nullable(),
   expectedDatabase: z.string().optional(),
   mode: z.enum(['simple', 'full']).optional().default('simple'),
+  privilege: privilegeSchema,
 })
 
 const querySchema = z.object({
@@ -58,6 +62,15 @@ const aliasesSchema = z.object({
   tnsAdminPath: z.string().min(1).optional(),
   tnsFileName: z.string().min(1).optional(),
 })
+
+const TNS_MAX_BYTES = 256 * 1024
+
+const tnsContentSchema = z
+  .string()
+  .min(1)
+  .refine((value) => Buffer.byteLength(value, 'utf8') <= TNS_MAX_BYTES, {
+    message: 'Arquivo TNS excede o limite de 256 KB.',
+  })
 
 export const oracleRouter = Router()
 
@@ -152,7 +165,7 @@ oracleRouter.post('/tns-parse', requirePermission('oracle.configure'), async (re
 oracleRouter.post('/tns-import', requirePermission('oracle.configure'), validationRateLimit, async (req, res, next) => {
   try {
     const schema = z.object({
-      content: z.string().min(1),
+      content: tnsContentSchema,
       fileName: z.string().min(1).optional().default('tnsnames.ora'),
     })
     const body = schema.parse(req.body)
@@ -171,7 +184,7 @@ oracleRouter.post('/tns-import', requirePermission('oracle.configure'), validati
 oracleRouter.post('/tns-parse-content', requirePermission('oracle.configure'), (req, res, next) => {
   try {
     const schema = z.object({
-      content: z.string().min(1),
+      content: tnsContentSchema,
       tnsAlias: z.string().min(1).optional(),
     })
     const body = schema.parse(req.body)
@@ -255,6 +268,7 @@ oracleRouter.post(
         password: body.password,
         includeAuth: Boolean(body.password || oracleService.hasPassword()),
         mode: body.mode ?? 'simple',
+        privilege: body.privilege,
         actor: req.actor,
       })
       if (result.ok) resetPasswordAttempts(req.ip)
@@ -281,6 +295,7 @@ oracleRouter.post(
       applyLogonIdentity(body)
       const status = await oracleService.connectOraclePool({
         password: body.password,
+        privilege: body.privilege,
         actor: req.actor,
       })
       resetPasswordAttempts(req.ip)
@@ -310,7 +325,7 @@ oracleRouter.post(
       const body = toggleSchema.parse(req.body)
       if (body.enabled) applyLogonIdentity(body)
       if (body.enabled && body.password) oracleService.setPassword(body.password)
-      const status = await oracleService.toggle(body.enabled, body.password, req.actor)
+      const status = await oracleService.toggle(body.enabled, body.password, req.actor, body.privilege)
       if (body.enabled) resetPasswordAttempts(req.ip)
       res.json({ ok: true, status })
     } catch (error) {

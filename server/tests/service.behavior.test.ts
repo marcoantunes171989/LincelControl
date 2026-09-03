@@ -131,6 +131,27 @@ ORCL =
     expect(oracleService.getStatus().connected).toBe(false)
   })
 
+  it('rejeita tnsnames.ora acima de 256KB', async () => {
+    const dataDir = tempDirs[0]
+    const { oracleService } = await loadService(dataDir)
+    const oversized = 'A'.repeat(256 * 1024 + 1)
+    await expect(oracleService.importTnsFile(oversized, 'tnsnames.ora')).rejects.toThrow(/256 ?KB/i)
+  })
+
+  it('importa tnsnames.ora dentro do limite normalmente', async () => {
+    const dataDir = tempDirs[0]
+    const { oracleService } = await loadService(dataDir)
+    const content = `
+TEST_DB =
+  (DESCRIPTION =
+    (ADDRESS = (PROTOCOL = TCP)(HOST = localhost)(PORT = 1521))
+    (CONNECT_DATA = (SERVICE_NAME = TESTE))
+  )
+`
+    const result = await oracleService.importTnsFile(content, 'tnsnames.ora')
+    expect(result.aliasNames).toContain('TEST_DB')
+  })
+
   it('exige senha para conectar', async () => {
     const dataDir = tempDirs[0]
     const { oracleService } = await loadService(dataDir)

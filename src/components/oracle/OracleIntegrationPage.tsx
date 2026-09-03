@@ -18,7 +18,13 @@ import { StatusBadge } from '../StatusBadge'
 import { DiagnosticStepList } from './DiagnosticStepList'
 import { SettingsInput } from './SettingsInput'
 import { useOracleIntegration } from '../../hooks/useOracleIntegration'
-import type { OracleConnectionStatus } from '../../types/oracle'
+import type { OracleConnectionStatus, OraclePrivilegeMode } from '../../types/oracle'
+
+const PRIVILEGE_LABELS: Record<OraclePrivilegeMode, string> = {
+  normal: 'Normal',
+  sysdba: 'SYSDBA',
+  sysoper: 'SYSOPER',
+}
 
 const STATUS_LABELS: Record<OracleConnectionStatus, string> = {
   not_configured: 'Não configurado',
@@ -156,21 +162,28 @@ export function OracleIntegrationPage({ onToast }: OracleIntegrationPageProps) {
           </div>
         )}
 
-        {progress && (
-          <div className="mt-4 flex items-center gap-2 rounded-xl border border-blue-200 bg-blue-50 px-3 py-2 text-sm text-blue-800">
-            <Loader2 size={16} className="animate-spin" aria-hidden="true" />
-            {progress}
-          </div>
-        )}
+        {/* Região única aria-live: leitores de tela anunciam "Conectando..." e o resultado
+            (sucesso ou erro) sem exigir foco manual em cada mudança de estado. */}
+        <div aria-live="polite" aria-atomic="true">
+          {progress && (
+            <div className="mt-4 flex items-center gap-2 rounded-xl border border-blue-200 bg-blue-50 px-3 py-2 text-sm text-blue-800">
+              <Loader2 size={16} className="animate-spin" aria-hidden="true" />
+              {progress}
+            </div>
+          )}
 
-        {error && (
-          <div className="mt-4 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700" role="alert">
-            {error}
-          </div>
-        )}
+          {error && (
+            <div
+              className="mt-4 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700"
+              role="alert"
+            >
+              {error}
+            </div>
+          )}
+        </div>
       </section>
 
-      <section className="mx-auto w-full max-w-xl rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+      <section className="mx-auto w-full max-w-2xl rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
         <div className="mb-5 flex items-center gap-3 border-b border-slate-100 pb-4">
           <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-gradient-to-br from-rose-500 to-rose-600 text-white shadow-sm">
             <Database size={28} aria-hidden="true" />
@@ -212,7 +225,7 @@ export function OracleIntegrationPage({ onToast }: OracleIntegrationPageProps) {
               <input
                 ref={tnsFileInputRef}
                 type="file"
-                accept=".ora,text/plain,*/*"
+                accept=".ora,text/plain"
                 className="sr-only"
                 disabled={busy || connected}
                 onChange={(event) => {
@@ -335,12 +348,22 @@ export function OracleIntegrationPage({ onToast }: OracleIntegrationPageProps) {
           <label className="flex flex-col gap-1.5">
             <span className="text-sm font-medium text-slate-700">Connect as</span>
             <select
-              disabled
-              className="min-h-11 lg:min-h-9 rounded-lg border border-slate-300 bg-slate-50 px-3 text-sm text-slate-600"
-              defaultValue="Normal"
+              value={form.privilege}
+              disabled={busy || connected}
+              onChange={(event) => updateField('privilege', event.target.value as OraclePrivilegeMode)}
+              className="min-h-11 lg:min-h-9 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-700 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 disabled:bg-slate-50 disabled:text-slate-500"
             >
-              <option value="Normal">Normal</option>
+              {(Object.keys(PRIVILEGE_LABELS) as OraclePrivilegeMode[]).map((mode) => (
+                <option key={mode} value={mode}>
+                  {PRIVILEGE_LABELS[mode]}
+                </option>
+              ))}
             </select>
+            {form.privilege !== 'normal' && (
+              <p className="text-xs text-amber-700">
+                Sessão privilegiada ({PRIVILEGE_LABELS[form.privilege]}). Use apenas quando necessário.
+              </p>
+            )}
           </label>
 
           <div className="flex flex-wrap justify-end gap-2 border-t border-slate-100 pt-4">

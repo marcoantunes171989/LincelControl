@@ -135,6 +135,7 @@ export function useOracleIntegration() {
       expectedHost: form.expectedHost.trim(),
       expectedPort: form.expectedPort ? Number.parseInt(form.expectedPort, 10) || null : null,
       expectedDatabase: form.expectedDatabase.trim(),
+      privilege: form.privilege,
     }),
     [form],
   )
@@ -157,6 +158,17 @@ export function useOracleIntegration() {
   /** Importa tnsnames.ora pelo navegador; se a API falhar, parseia localmente. */
   const importTnsFile = useCallback(
     async (file: File): Promise<boolean> => {
+      const TNS_MAX_BYTES = 256 * 1024
+      const nameOk = /\.ora$/i.test(file.name) || /^tnsnames(\.ora)?$/i.test(file.name)
+      if (!nameOk) {
+        setError('Selecione um arquivo tnsnames.ora ou .ora.')
+        return false
+      }
+      if (file.size > TNS_MAX_BYTES) {
+        setError('Arquivo TNS excede o limite de 256 KB.')
+        return false
+      }
+
       setBusy(true)
       setError(null)
       setProgress('Lendo arquivo TNS...')

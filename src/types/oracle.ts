@@ -1,5 +1,7 @@
 import type { LicenseData, ModuleState, NfeExpertMode, StoreData } from './index'
 
+export type OraclePrivilegeMode = 'normal' | 'sysdba' | 'sysoper'
+
 export type OracleConnectionStatus =
   | 'not_configured'
   | 'password_required'
@@ -109,6 +111,8 @@ export interface OracleFormState {
   expectedDatabase: string
   username: string
   password: string
+  /** Connect as: normal (padrão, mais seguro) | sysdba | sysoper. Nunca vai na connectString. */
+  privilege: OraclePrivilegeMode
 }
 
 export const EMPTY_ORACLE_FORM: OracleFormState = {
@@ -121,6 +125,7 @@ export const EMPTY_ORACLE_FORM: OracleFormState = {
   expectedDatabase: '',
   username: '',
   password: '',
+  privilege: 'normal',
 }
 
 /**
